@@ -19,7 +19,7 @@ Read [DESIGN.md](../../../DESIGN.md) first. Tokens live in `src/styles/tokens.cs
 ## Checklist before finishing
 
 - [ ] Only semantic colours (`bg-kumo-*`, `text-kumo-*`, `ring-kumo-*`, `--paper-*`). No raw Tailwind palette, no hex in components.
-- [ ] No `dark:` variants. Checked in both `data-mode="light"` and `data-mode="dark"`; the paper canvas looks the same in both.
+- [ ] Light only: no `dark:` variants, no dark tokens. Checked with the OS in dark mode too (it must still render white).
 - [ ] Accent appears once on the screen, on the primary action.
 - [ ] Metadata uses `<Slug>`; changing numbers use `tabular-nums`.
 - [ ] Icons are Phosphor at 16–20 px; every icon-only button has `aria-label`.
@@ -33,5 +33,5 @@ Read [DESIGN.md](../../../DESIGN.md) first. Tokens live in `src/styles/tokens.cs
 
 ## Verify visually
 
-Run `npm run dev`, open the page in the browser, and look at it in light and dark mode
+Run `pnpm dev`, open the page in the browser, and look at it (with the OS in dark mode too)
 and at phone width before calling it done.

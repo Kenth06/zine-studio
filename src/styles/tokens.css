@@ -5,8 +5,11 @@
  * See DESIGN.md for the rules behind every value.
  */
 
+/* Light only: the app is white in every system appearance. */
 :root,
 :root[data-mode="light"] {
+  color-scheme: light;
+
   /* Surfaces, outermost to innermost: white, with near-neutral greys */
   --color-kumo-canvas: #ffffff;
   --color-kumo-base: #ffffff;
@@ -38,7 +41,7 @@
   --color-kumo-brand: #c2401f;
   --color-kumo-brand-hover: #a8361a;
 
-  /* Paper layer: the zine canvas. White sheets, never changes with dark mode. */
+  /* Paper layer: the zine canvas. */
   --paper-sheet: #ffffff;
   --paper-ink: #1c1917;
   --paper-guide: rgb(0 0 0 / 0.24);
@@ -80,42 +83,4 @@
   --dur-exit: 150ms;
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-exit: cubic-bezier(0.25, 0.46, 0.45, 0.94);
-}
-
-:root[data-mode="dark"] {
-  --color-kumo-canvas: #151411;
-  --color-kumo-base: #1c1b17;
-  --color-kumo-elevated: #191814;
-  --color-kumo-recessed: #100f0d;
-  --color-kumo-tint: #26251f;
-  --color-kumo-overlay: #22211c;
-  --color-kumo-control: #1f1e1a;
-  --color-kumo-fill: #2c2a24;
-  --color-kumo-fill-hover: #33312a;
-  --color-kumo-interact: #3d3b33;
-  --color-kumo-contrast: #ecebe5;
-
-  --color-kumo-hairline: #2a2923;
-  --color-kumo-line: #3a3831;
-  --color-kumo-focus: #60a5fa;
-  --focus-ring: #60a5fa;
-
-  --text-color-kumo-default: #ecebe5;
-  --text-color-kumo-strong: #f7f6f2;
-  --text-color-kumo-subtle: #a39f94;
-  --text-color-kumo-inactive: #5f5b52;
-  --text-color-kumo-placeholder: #77736a;
-  --text-color-kumo-inverse: #1c1b17;
-
-  --color-kumo-brand: #d9542f;
-  --color-kumo-brand-hover: #e2683f;
-
-  --paper-shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 24px rgb(0 0 0 / 0.35);
-  --float-bg: rgb(32 31 27 / 0.86);
-  --float-ring: rgb(255 255 255 / 0.07);
-  --float-shadow: 0 2px 8px rgb(0 0 0 / 0.3), 0 14px 40px rgb(0 0 0 / 0.4);
-  --cta-shadow: 0 2px 8px -2px rgb(0 0 0 / 0.5), inset 0 1px 0 rgb(255 255 255 / 0.15);
-  --mark: rgb(236 235 229 / 0.5);
-  --mat-dot: rgb(236 235 229 / 0.09);
-  --image-outline: rgb(255 255 255 / 0.1);
 }

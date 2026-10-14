@@ -19,9 +19,9 @@ Components keep using Kumo's semantic classes (`bg-kumo-base`, `text-kumo-subtle
 
 ## Colour
 
-Two layers: **chrome** (the app around the work) follows the system light/dark mode; **paper** (the zine canvas) never changes, because paper is paper.
+One mode: **light**. The app stays white whatever the system appearance, like a sheet of paper on a table. `<html data-mode="light">` is fixed and there are no dark tokens.
 
-### Chrome — light
+### Chrome
 
 | Token | Value | Use |
 | --- | --- | --- |
@@ -35,10 +35,6 @@ Two layers: **chrome** (the app around the work) follows the system light/dark m
 | `--text-color-kumo-subtle` | `#6f6a66` | Secondary text (AA on white) |
 | `--color-kumo-brand` | `#c2401f` | Vermilion. Primary action only |
 | `--focus-ring` | `#2563eb` | Keyboard focus only, never selection |
-
-### Chrome — dark
-
-Warm near-black, never blue: canvas `#151411`, base `#1c1b17`, ink `#ecebe5`, subtle `#a39f94`, accent `#d9542f`, focus `#60a5fa`.
 
 ### Paper
 
@@ -146,5 +142,5 @@ are the only illustrations.
 - Panels of rounded cards around the work. If it looks like an admin dashboard, start again.
 - Onboarding modals, tours, «Get started» heroes.
 - Marketing adjectives (increíble, potente, mágico).
-- `dark:` Tailwind variants. Mode is `data-mode` on `<html>`; tokens handle it.
+- A dark mode or a theme toggle. `dark:` Tailwind variants.
 - Raw Tailwind colours (`bg-blue-500`). Use semantic tokens.
