@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
 import type { PhotoFill } from '../lib/crop'
 import type { FormatId, PaperId } from '../lib/formats'
-import { autoFill, blankFill, createProject, newPage, withFormat, withTemplate, type PhotoMeta, type Project } from '../lib/model'
+import { autoFill, blankFill, createProject, newPage, swapFills, withFormat, withTemplate, type PhotoMeta, type Project, type SlotRef } from '../lib/model'
 import { collectPhotos, loadProject, loadThumb, saveProject } from '../lib/storage'
 import type { TemplateId } from '../lib/templates'
 
@@ -13,6 +13,7 @@ export type Action =
   | { type: 'removePhoto'; id: string }
   | { type: 'assign'; page: number; slot: number; photoId: string }
   | { type: 'clearSlot'; page: number; slot: number }
+  | { type: 'swap'; a: SlotRef; b: SlotRef }
   | { type: 'updateFill'; page: number; slot: number; fill: PhotoFill }
   | { type: 'setTemplate'; page: number; template: TemplateId }
   | { type: 'setText'; page: number; text: string }
@@ -53,6 +54,8 @@ function reduce(p: Project | null, a: Action): Project | null {
         ...page,
         fills: page.fills.map((f, i) => (i === a.slot ? blankFill(a.photoId) : f)),
       }))
+    case 'swap':
+      return swapFills(p, a.a, a.b)
     case 'clearSlot':
       return mapPage(p, a.page, (page) => ({ ...page, fills: page.fills.map((f, i) => (i === a.slot ? null : f)) }))
     case 'updateFill':

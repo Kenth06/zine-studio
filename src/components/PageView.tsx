@@ -2,13 +2,11 @@ import { cn } from '@cloudflare/kumo/utils'
 import { ImageIcon } from '@phosphor-icons/react'
 import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react'
 import { cropRect, MAX_ZOOM, panFill, type PhotoFill } from '../lib/crop'
-
-const clampZoom = (z: number) => Math.min(MAX_ZOOM, Math.max(1, z))
 import { marginFor } from '../lib/formats'
 import type { Page, PhotoMeta } from '../lib/model'
 import { slotsFor, textSizePt } from '../lib/templates'
 
-export const PHOTO_MIME = 'application/x-zine-photo'
+const clampZoom = (z: number) => Math.min(MAX_ZOOM, Math.max(1, z))
 
 interface Props {
   page: Page
@@ -21,13 +19,14 @@ interface Props {
   selected: boolean
   selectedSlot: number | null
   onSelect: (slot: number | null) => void
-  onAssign: (slot: number, photoId: string) => void
   onFill: (slot: number, fill: PhotoFill) => void
   onClear: (slot: number) => void
   onText: (text: string) => void
   /** Files dropped on a slot, or chosen for it from the picker. */
   onFilesToSlot: (slot: number, files: File[]) => void
   onPickForSlot: (slot: number) => void
+  /** Pressing a photo that isn't selected may turn into dragging it to another slot. */
+  onDragPhoto: (e: PointerEvent, slot: number) => void
 }
 
 export function PageView(props: Props) {
@@ -184,6 +183,11 @@ function PhotoSlot(
       return
     }
     props.onSelect(index)
+    // Unselected photo: a drag moves it to another slot. Selected photo: a drag reframes it.
+    if (fill && !active) {
+      props.onDragPhoto(e, index)
+      return
+    }
     if (!fill || !meta || pointers.current.size >= 2) return
     pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
     try {
@@ -260,6 +264,7 @@ function PhotoSlot(
         'focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-(--focus-ring)',
       )}
       ref={el}
+      data-drop-slot={`${props.number - 1}:${index}`}
       style={{ ...props.style, touchAction: active && fill ? 'none' : 'manipulation' }}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
@@ -267,8 +272,7 @@ function PhotoSlot(
       onPointerCancel={onPointerEnd}
       onKeyDown={onKeyDown}
       onDragOver={(e) => {
-        const types = e.dataTransfer.types
-        if (types.includes(PHOTO_MIME) || types.includes('Files')) {
+        if (e.dataTransfer.types.includes('Files')) {
           e.preventDefault()
           e.stopPropagation()
           e.dataTransfer.dropEffect = 'copy'
@@ -278,13 +282,11 @@ function PhotoSlot(
       onDragLeave={() => setOver(false)}
       onDrop={(e) => {
         setOver(false)
-        const id = e.dataTransfer.getData(PHOTO_MIME)
         const files = [...e.dataTransfer.files]
-        if (!id && !files.length) return
+        if (!files.length) return
         e.preventDefault()
         e.stopPropagation()
-        if (id) props.onAssign(index, id)
-        else props.onFilesToSlot(index, files)
+        props.onFilesToSlot(index, files)
         props.onSelect(index)
       }}
     >

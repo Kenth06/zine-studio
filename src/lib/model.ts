@@ -84,6 +84,23 @@ export function withFormat(p: Project, format: Project['format']): Project {
   return { ...p, format, pages }
 }
 
+export interface SlotRef {
+  page: number
+  slot: number
+}
+
+/** Move a photo to another slot; if that slot has a photo, the two swap. */
+export function swapFills(p: Project, a: SlotRef, b: SlotRef): Project {
+  if (a.page === b.page && a.slot === b.slot) return p
+  const fa = p.pages[a.page]?.fills[a.slot]
+  const fb = p.pages[b.page]?.fills[b.slot]
+  if (fa === undefined || fb === undefined) return p
+  const pages = p.pages.map((pg) => ({ ...pg, fills: [...pg.fills] }))
+  pages[a.page].fills[a.slot] = fb
+  pages[b.page].fills[b.slot] = fa
+  return { ...p, pages }
+}
+
 export function withTemplate(page: Page, template: TemplateId): Page {
   const n = photoCount(template)
   const kept = page.fills.filter(Boolean)

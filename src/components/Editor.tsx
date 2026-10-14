@@ -2,6 +2,7 @@ import { Button } from '@cloudflare/kumo/components/button'
 import { Dialog } from '@cloudflare/kumo/components/dialog'
 import { DropdownMenu } from '@cloudflare/kumo/components/dropdown'
 import { useKumoToastManager } from '@cloudflare/kumo/components/toast'
+import { Tooltip } from '@cloudflare/kumo/components/tooltip'
 import { cn } from '@cloudflare/kumo/utils'
 import {
   ArrowArcLeftIcon,
@@ -23,7 +24,8 @@ import type { Action } from '../state/project'
 import { useViewport } from '../state/viewport'
 import { Bar, CtaButton, Divider, Dock, DockButton, FloatButton, IconButton } from './Chrome'
 import { PageTools } from './PageTools'
-import { PageView, PHOTO_MIME } from './PageView'
+import { useDrag, type DragPayload, type DropTarget } from './drag'
+import { PageView } from './PageView'
 import { Proof } from './Proof'
 import { Slug } from './Slug'
 
@@ -178,6 +180,23 @@ export function Editor({ project, dispatch, thumbs, importing, canUndo, canRedo,
     toasts.add({ title: 'No quedan huecos vacíos', description: 'Elige un hueco para cambiar su foto.' })
   }
 
+  // Drag photos between slots (swap), from the dock into a slot, or a page number onto another page (reorder).
+  const accepts = (p: DragPayload, t: DropTarget) =>
+    p.kind === 'photo'
+      ? t.kind === 'slot' && !(p.from && p.from.page === t.ref.page && p.from.slot === t.ref.slot)
+      : t.kind === 'page' && t.index !== p.index
+  const drag = useDrag(accepts, (p, t) => {
+    if (p.kind === 'photo' && t.kind === 'slot') {
+      if (p.from) dispatch({ type: 'swap', a: p.from, b: t.ref })
+      else dispatch({ type: 'assign', page: t.ref.page, slot: t.ref.slot, photoId: p.photoId })
+      setSel({ page: t.ref.page, slot: t.ref.slot })
+    } else if (p.kind === 'page' && t.kind === 'page') {
+      dispatch({ type: 'movePage', from: p.index, to: t.index })
+      setSel({ page: t.index, slot: null })
+    }
+  })
+  const photoGhost = (id: string) => thumbs[id] && <img src={thumbs[id]} alt="" className="size-14 rounded-md object-cover" />
+
   /** First file goes into the slot; any others fill empty slots as usual. */
   const filesToSlot = async (pageIndex: number, slot: number, files: File[]) => {
     const added = await onFiles(files, false)
@@ -236,28 +255,32 @@ export function Editor({ project, dispatch, thumbs, importing, canUndo, canRedo,
             <figure key={spread.join('-')} className="flex max-w-full flex-col items-center gap-3" onClick={deselect}>
               <div className="flex gap-0.5">
                 {spread.map((n) => (
-                  <PageView
-                    key={project.pages[n - 1].id}
-                    page={project.pages[n - 1]}
-                    number={n}
-                    size={size}
-                    bleed={bleed}
-                    pxPerMm={pxPerMm}
-                    photos={photos}
-                    thumbs={thumbs}
-                    selected={page === n - 1}
-                    selectedSlot={page === n - 1 ? sel.slot : null}
-                    onSelect={(slot) => setSel({ page: n - 1, slot })}
-                    onAssign={(slot, photoId) => dispatch({ type: 'assign', page: n - 1, slot, photoId })}
-                    onFill={(slot, f) => dispatch({ type: 'updateFill', page: n - 1, slot, fill: f })}
-                    onClear={(slot) => {
-                      dispatch({ type: 'clearSlot', page: n - 1, slot })
-                      undoable('Foto quitada del hueco')
-                    }}
-                    onText={(text) => dispatch({ type: 'setText', page: n - 1, text })}
-                    onFilesToSlot={(slot, files) => void filesToSlot(n - 1, slot, files)}
-                    onPickForSlot={(slot) => openPicker({ page: n - 1, slot })}
-                  />
+                  <div key={project.pages[n - 1].id} data-drop-page={n - 1} className="flex flex-col items-center gap-2 rounded-[3px]">
+                    <PageView
+                      page={project.pages[n - 1]}
+                      number={n}
+                      size={size}
+                      bleed={bleed}
+                      pxPerMm={pxPerMm}
+                      photos={photos}
+                      thumbs={thumbs}
+                      selected={page === n - 1}
+                      selectedSlot={page === n - 1 ? sel.slot : null}
+                      onSelect={(slot) => setSel({ page: n - 1, slot })}
+                      onFill={(slot, f) => dispatch({ type: 'updateFill', page: n - 1, slot, fill: f })}
+                      onClear={(slot) => {
+                        dispatch({ type: 'clearSlot', page: n - 1, slot })
+                        undoable('Foto quitada del hueco')
+                      }}
+                      onText={(text) => dispatch({ type: 'setText', page: n - 1, text })}
+                      onFilesToSlot={(slot, files) => void filesToSlot(n - 1, slot, files)}
+                      onPickForSlot={(slot) => openPicker({ page: n - 1, slot })}
+                      onDragPhoto={(e, slot) => {
+                        const f = project.pages[n - 1].fills[slot]
+                        if (f) drag.start(e, { kind: 'photo', photoId: f.photoId, from: { page: n - 1, slot } }, photoGhost(f.photoId))
+                      }}
+                    />
+                  </div>
                 ))}
               </div>
               <figcaption className="flex gap-2">
@@ -342,32 +365,35 @@ export function Editor({ project, dispatch, thumbs, importing, canUndo, canRedo,
               const placed = fill?.photoId === photo.id
               return (
                 <li key={photo.id} className="relative shrink-0">
-                  <button
-                    type="button"
-                    draggable
-                    onDragStart={(e) => {
-                      e.dataTransfer.setData(PHOTO_MIME, photo.id)
-                      e.dataTransfer.effectAllowed = 'copy'
-                    }}
-                    onClick={() => pick(photo.id)}
-                    onKeyDown={(e) => {
-                      if (e.key !== 'Delete' && e.key !== 'Backspace') return
-                      dispatch({ type: 'removePhoto', id: photo.id })
-                      undoable(`${photo.name} quitada del zine`)
-                    }}
-                    aria-label={`${photo.name}${dpi === undefined ? ', sin usar' : ''}. Supr para quitarla.`}
-                    title={`${photo.name}${dpi === undefined ? ' · sin usar' : ` · ${dpi} ppp`}`}
-                    className={cn(
-                      'focus-ring block size-10 rounded-[8px] bg-kumo-recessed',
-                      'transition-[box-shadow,opacity,scale] duration-(--dur-quick) ease-out active:scale-[0.96]',
-                      placed ? 'ring-2 ring-kumo-contrast ring-offset-1 ring-offset-(--float-bg)' : '',
-                      dpi === undefined && 'opacity-55 hover:opacity-100',
-                    )}
-                  >
-                    {thumbs[photo.id] && (
-                      <img src={thumbs[photo.id]} alt="" draggable={false} className="photo-outline size-full rounded-[8px] object-cover" />
-                    )}
-                  </button>
+                  <Tooltip
+                    content={photo.name + (dpi === undefined ? ' · sin usar' : ' · ' + dpi + ' ppp')}
+                    render={
+                      <button
+                        type="button"
+                        onPointerDown={(e) => drag.start(e, { kind: 'photo', photoId: photo.id }, photoGhost(photo.id))}
+                        onClick={() => pick(photo.id)}
+                        onKeyDown={(e) => {
+                          if (e.key !== 'Delete' && e.key !== 'Backspace') return
+                          dispatch({ type: 'removePhoto', id: photo.id })
+                          undoable(`${photo.name} quitada del zine`)
+                        }}
+                        aria-label={`${photo.name}${dpi === undefined ? ', sin usar' : ''}. Supr para quitarla.`}
+                        style={{ touchAction: 'pan-x' }}
+                        className={cn(
+                          'focus-ring block size-10 cursor-grab rounded-[8px] bg-kumo-recessed',
+                          'transition-[box-shadow,opacity,scale] duration-(--dur-quick) ease-out active:scale-[0.96]',
+                          placed
+                            ? 'ring-2 ring-kumo-contrast ring-offset-1 ring-offset-(--float-bg)'
+                            : 'hover:ring-2 hover:ring-kumo-interact hover:ring-offset-1 hover:ring-offset-(--float-bg)',
+                          dpi === undefined && 'opacity-55 hover:opacity-100',
+                        )}
+                      >
+                        {thumbs[photo.id] && (
+                          <img src={thumbs[photo.id]} alt="" draggable={false} className="photo-outline size-full rounded-[8px] object-cover" />
+                        )}
+                      </button>
+                    }
+                  />
                   {level && level !== 'ok' && (
                     <span
                       aria-hidden
@@ -404,6 +430,8 @@ export function Editor({ project, dispatch, thumbs, importing, canUndo, canRedo,
           e.target.value = ''
         }}
       />
+
+      {drag.ghost}
 
       {proof && (
         <Proof
@@ -454,3 +482,4 @@ export function Editor({ project, dispatch, thumbs, importing, canUndo, canRedo,
     </div>
   )
 }
+
