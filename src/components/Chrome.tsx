@@ -1,25 +1,20 @@
 import { cn } from '@cloudflare/kumo/utils'
-import type { ComponentProps, ReactNode } from 'react'
+import { useRef, type ComponentProps, type KeyboardEvent, type ReactNode } from 'react'
 
 /**
  * The floating chrome around the work: round corner buttons, the bottom dock,
- * and the one call-to-action pill. Nothing here sits in a panel.
+ * the contextual bar, and the one call-to-action pill. Nothing here sits in a panel.
  */
 
 const floating = 'bg-(--float-bg) shadow-(--float-shadow) ring-1 ring-(--float-ring) backdrop-blur-md'
+const press = 'transition-[color,background-color,scale] duration-(--dur-quick) ease-out active:scale-[0.96]'
 
 export function FloatButton({ className, ...props }: ComponentProps<'button'>) {
   return (
     <button
       type="button"
       {...props}
-      className={cn(
-        floating,
-        'flex size-10 shrink-0 items-center justify-center rounded-full text-kumo-subtle',
-        'transition-[color,transform] duration-(--dur-quick) ease-(--ease-out) hover:text-kumo-default active:scale-95',
-        'outline-none focus-visible:ring-2 focus-visible:ring-kumo-focus',
-        className,
-      )}
+      className={cn(floating, press, 'focus-ring flex size-10 shrink-0 items-center justify-center rounded-full text-kumo-subtle hover:text-kumo-default', className)}
     />
   )
 }
@@ -30,9 +25,8 @@ export function CtaButton({ className, children, ...props }: ComponentProps<'but
       type="button"
       {...props}
       className={cn(
-        'flex h-10 shrink-0 items-center gap-2 rounded-full bg-kumo-brand px-4 text-[13px] font-medium text-white shadow-(--cta-shadow)',
-        'transition-[background-color,transform,opacity] duration-(--dur-quick) ease-(--ease-out) hover:bg-kumo-brand-hover active:scale-[0.97]',
-        'outline-none focus-visible:ring-2 focus-visible:ring-kumo-focus focus-visible:ring-offset-2 focus-visible:ring-offset-kumo-canvas',
+        press,
+        'focus-ring flex h-10 shrink-0 items-center gap-2 rounded-full bg-kumo-brand px-4 text-[13px] font-medium whitespace-nowrap text-white shadow-(--cta-shadow) hover:bg-kumo-brand-hover',
         'disabled:pointer-events-none disabled:opacity-60',
         className,
       )}
@@ -42,25 +36,29 @@ export function CtaButton({ className, children, ...props }: ComponentProps<'but
   )
 }
 
+/** Bottom-centre floating bar. Scrolls sideways instead of overflowing on narrow screens. */
 export function Dock({ className, children, label }: { className?: string; children: ReactNode; label: string }) {
   return (
-    <div
-      role="toolbar"
-      aria-label={label}
-      className={cn(
-        floating,
-        'animate-rise fixed bottom-4 left-1/2 z-30 flex max-w-[calc(100vw-32px)] -translate-x-1/2 items-center gap-1 rounded-(--radius-dock) p-1.5',
-        className,
-      )}
-    >
-      {children}
+    <div className="pointer-events-none fixed inset-x-4 bottom-[max(1rem,env(safe-area-inset-bottom))] z-30 flex justify-center">
+      <div
+        role="toolbar"
+        aria-label={label}
+        className={cn(
+          floating,
+          'animate-rise no-scrollbar pointer-events-auto flex max-w-full items-center gap-1 overflow-x-auto rounded-(--radius-dock) p-1.5',
+          className,
+        )}
+      >
+        {children}
+      </div>
     </div>
   )
 }
 
+/** Contextual bar for the selected thing; one at a time. */
 export function Bar({ className, children, label }: { className?: string; children: ReactNode; label: string }) {
   return (
-    <div role="toolbar" aria-label={label} className={cn(floating, 'animate-land flex items-center gap-1 rounded-[14px] p-1', className)}>
+    <div role="toolbar" aria-label={label} className={cn(floating, 'animate-land no-scrollbar flex max-w-full items-center gap-1 overflow-x-auto rounded-[14px] p-1', className)}>
       {children}
     </div>
   )
@@ -68,24 +66,71 @@ export function Bar({ className, children, label }: { className?: string; childr
 
 export const Divider = () => <span aria-hidden className="mx-1 h-6 w-px shrink-0 bg-kumo-hairline" />
 
-export function Segment({
-  selected,
+const segment = 'focus-ring flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-[11px] px-3 text-[13px] whitespace-nowrap transition-colors duration-(--dur-quick)'
+
+/** A plain action styled like a segment, for docks and bars. */
+export function DockButton({ className, ...props }: ComponentProps<'button'>) {
+  return <button type="button" {...props} className={cn(segment, 'text-kumo-default hover:bg-kumo-tint disabled:opacity-50', className)} />
+}
+
+/**
+ * Radio group with roving focus: one Tab stop, arrow keys move and select.
+ * Options render as segments; the selected one is solid ink.
+ */
+export function SegmentGroup<T extends string | number | boolean>({
+  label,
+  value,
+  options,
+  onChange,
   className,
-  ...props
-}: ComponentProps<'button'> & { selected?: boolean }) {
+  itemClassName,
+}: {
+  label: string
+  value: T
+  options: { value: T; label: ReactNode; title?: string }[]
+  onChange: (v: T) => void
+  className?: string
+  itemClassName?: string
+}) {
+  const refs = useRef<(HTMLButtonElement | null)[]>([])
+  const index = Math.max(0, options.findIndex((o) => o.value === value))
+
+  const onKeyDown = (e: KeyboardEvent) => {
+    const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key]
+    const to = e.key === 'Home' ? 0 : e.key === 'End' ? options.length - 1 : step ? (index + step + options.length) % options.length : -1
+    if (to < 0) return
+    e.preventDefault()
+    onChange(options[to].value)
+    refs.current[to]?.focus()
+  }
+
   return (
-    <button
-      type="button"
-      role="radio"
-      aria-checked={selected}
-      {...props}
-      className={cn(
-        'flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-[11px] px-3 text-[13px] whitespace-nowrap',
-        'transition-colors duration-(--dur-quick) outline-none focus-visible:ring-2 focus-visible:ring-kumo-focus',
-        selected ? 'bg-kumo-contrast font-medium text-kumo-inverse' : 'text-kumo-subtle hover:bg-kumo-tint hover:text-kumo-default',
-        className,
-      )}
-    />
+    <div role="radiogroup" aria-label={label} className={cn('flex', className)} onKeyDown={onKeyDown}>
+      {options.map((o, i) => {
+        const on = i === index
+        return (
+          <button
+            key={String(o.value)}
+            ref={(el) => {
+              refs.current[i] = el
+            }}
+            type="button"
+            role="radio"
+            aria-checked={on}
+            tabIndex={on ? 0 : -1}
+            title={o.title}
+            onClick={() => onChange(o.value)}
+            className={cn(
+              segment,
+              on ? 'bg-kumo-contrast font-medium text-kumo-inverse' : 'text-kumo-subtle hover:bg-kumo-tint hover:text-kumo-default',
+              itemClassName,
+            )}
+          >
+            {o.label}
+          </button>
+        )
+      })}
+    </div>
   )
 }
 
@@ -95,16 +140,15 @@ export function IconButton({ className, ...props }: ComponentProps<'button'> & {
       type="button"
       {...props}
       className={cn(
-        'flex size-8 shrink-0 items-center justify-center rounded-[10px] text-kumo-subtle',
-        'transition-colors duration-(--dur-quick) hover:bg-kumo-tint hover:text-kumo-default',
-        'outline-none focus-visible:ring-2 focus-visible:ring-kumo-focus disabled:pointer-events-none disabled:opacity-35',
+        'focus-ring flex size-8 shrink-0 items-center justify-center rounded-[10px] text-kumo-subtle',
+        'transition-colors duration-(--dur-quick) hover:bg-kumo-tint hover:text-kumo-default disabled:pointer-events-none disabled:opacity-35',
         className,
       )}
     />
   )
 }
 
-/** A slider that reads like a field: label inside, value on the right, tick marks behind. */
+/** A slider that reads like a field: label inside, value on the right, a visible handle. */
 export function FieldSlider({
   label,
   value,
@@ -126,12 +170,18 @@ export function FieldSlider({
 }) {
   const pct = ((value - min) / (max - min)) * 100
   return (
-    <label className={cn('relative flex h-8 items-center overflow-hidden rounded-[10px] bg-kumo-tint px-3 text-[12px]', className)}>
+    <label
+      className={cn(
+        'relative flex h-8 items-center overflow-hidden rounded-[10px] bg-kumo-tint px-3 text-[12px]',
+        'has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-(--focus-ring)',
+        className,
+      )}
+    >
       <span aria-hidden className="absolute inset-y-0 left-0 bg-kumo-fill" style={{ width: `${pct}%` }} />
       <span
         aria-hidden
-        className="absolute inset-x-3 top-1/2 h-1.5 -translate-y-1/2"
-        style={{ backgroundImage: 'linear-gradient(90deg, var(--mat-dot) 1px, transparent 1px)', backgroundSize: '8px 100%' }}
+        className="absolute inset-y-1.5 w-0.5 -translate-x-1/2 rounded-full bg-kumo-contrast"
+        style={{ left: `max(4px, min(calc(100% - 4px), ${pct}%))` }}
       />
       <span className="relative font-medium text-kumo-default">{label}</span>
       <span className="relative ml-auto pl-3 font-mono text-[11px] text-kumo-subtle tabular-nums">{format(value)}</span>
@@ -143,6 +193,7 @@ export function FieldSlider({
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
         aria-label={label}
+        aria-valuetext={format(value)}
         className="absolute inset-0 cursor-ew-resize opacity-0"
       />
     </label>

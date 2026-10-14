@@ -37,7 +37,7 @@ export function PageView(props: Props) {
       className={cn(
         'relative overflow-hidden bg-(--paper-sheet) text-(--paper-ink) shadow-(--paper-shadow) rounded-(--paper-radius)',
         'transition-[outline-color] duration-(--dur-quick) outline-2 outline-offset-4',
-        selected ? 'outline-kumo-focus' : 'outline-transparent',
+        selected ? 'outline-kumo-contrast' : 'outline-transparent',
       )}
       style={{ width: size.w * pxPerMm, height: size.h * pxPerMm }}
       onClick={(e) => {
@@ -61,7 +61,7 @@ export function PageView(props: Props) {
               onFocus={() => props.onSelect(null)}
               placeholder="Escribe aquí"
               aria-label={`Texto de la página ${props.number}`}
-              className="absolute resize-none overflow-hidden bg-transparent font-serif text-(--paper-ink) outline-none placeholder:text-(--paper-guide) focus:bg-(--paper-empty)"
+              className="absolute resize-none overflow-hidden bg-transparent font-serif text-(--paper-ink) outline-hidden placeholder:text-(--paper-placeholder) focus:bg-(--paper-empty) focus-visible:outline-2 focus-visible:outline-(--focus-ring)"
               style={{ ...style, fontSize: fs, lineHeight: 1.35 }}
             />
           )
@@ -107,8 +107,12 @@ function PhotoSlot(
 
   const onPointerDown = (e: PointerEvent<HTMLDivElement>) => {
     props.onSelect(index)
-    if (!fill || !meta || !active) return
-    e.currentTarget.setPointerCapture(e.pointerId)
+    if (!fill || !meta) return
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId)
+    } catch {
+      // Synthetic or already-released pointers cannot be captured; dragging still works without it.
+    }
     drag.current = { x: e.clientX, y: e.clientY, fill }
   }
   const onPointerMove = (e: PointerEvent<HTMLDivElement>) => {
@@ -154,10 +158,9 @@ function PhotoSlot(
       aria-label={meta ? `Hueco ${index + 1}: ${meta.name}` : `Hueco ${index + 1} vacío`}
       aria-pressed={active}
       className={cn(
-        'absolute overflow-hidden outline-none select-none',
-        fill ? (active ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer') : 'cursor-pointer bg-(--paper-empty)',
-        'focus-visible:ring-2 focus-visible:ring-kumo-focus',
-        active && 'ring-2 ring-inset ring-kumo-focus',
+        'absolute overflow-hidden outline-hidden select-none',
+        fill ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer bg-(--paper-empty)',
+        'focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-(--focus-ring)',
       )}
       style={props.style}
       onPointerDown={onPointerDown}
@@ -185,6 +188,10 @@ function PhotoSlot(
         <div className="flex h-full items-center justify-center border border-dashed border-(--paper-guide) text-(--paper-guide)">
           <ImageIcon size={18} />
         </div>
+      )}
+      {active && (
+        // Above the photo so it always shows: ink ring with a white inner edge for dark photos.
+        <span aria-hidden className="pointer-events-none absolute inset-0 shadow-[inset_0_0_0_2px_var(--color-kumo-contrast),inset_0_0_0_3px_rgb(255_255_255/0.9)]" />
       )}
     </div>
   )

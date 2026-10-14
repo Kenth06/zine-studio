@@ -1,4 +1,4 @@
-import { clear, del, get, set } from 'idb-keyval'
+import { clear, del, delMany, get, keys, set } from 'idb-keyval'
 import type { Project } from './model'
 
 /**
@@ -16,6 +16,15 @@ export const loadPhoto = (id: string) => get<Blob>(`photo:${id}`)
 export const loadThumb = (id: string) => get<Blob>(`thumb:${id}`)
 
 export const deletePhoto = (id: string) => Promise.all([del(`photo:${id}`), del(`thumb:${id}`)])
+
+/** Delete stored photos that are not in `keep`. Run only when no undo history can bring them back. */
+export async function collectPhotos(keep: Set<string>) {
+  const stale = (await keys()).filter((k) => {
+    const m = /^(photo|thumb):(.+)$/.exec(String(k))
+    return m !== null && !keep.has(m[2])
+  })
+  if (stale.length) await delMany(stale)
+}
 
 export async function wipeEverything() {
   await clear()

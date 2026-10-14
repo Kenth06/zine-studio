@@ -29,3 +29,8 @@ notes/
 .dev.vars*
 test-results/
 playwright-report/
+
+# Local Claude Code session state
+.claude/*.lock
+.claude/settings.local.json
+.impeccable/

@@ -6,11 +6,11 @@ import { StartScreen } from './components/StartScreen'
 import type { FormatId, PaperId } from './lib/formats'
 import type { PhotoMeta } from './lib/model'
 import { importPhoto, isPhotoFile } from './lib/photos'
-import { askPersistence, deletePhoto, wipeEverything } from './lib/storage'
+import { askPersistence, collectPhotos, wipeEverything } from './lib/storage'
 import { useProject, useThumbs } from './state/project'
 
 export default function App() {
-  const { project, dispatch, ready, draft } = useProject()
+  const { project, dispatch, ready, draft, canUndo, canRedo } = useProject()
   const { urls, put } = useThumbs(project?.photos ?? [])
   const [importing, setImporting] = useState(0)
   const [started, setStarted] = useState(false)
@@ -56,7 +56,9 @@ export default function App() {
           if (!project) dispatch({ type: 'load', project: draft })
           setStarted(true)
         }}
-        onStart={(format: FormatId, paper: PaperId, files) => {
+        onStart={async (format: FormatId, paper: PaperId, files) => {
+          // The previous draft is replaced and has no undo history: free its photos first.
+          await collectPhotos(new Set())
           dispatch({ type: 'create', format, paper })
           setStarted(true)
           if (files.length) void addFiles(files, true)
@@ -71,10 +73,8 @@ export default function App() {
       thumbs={urls}
       importing={importing}
       onFiles={addFiles}
-      onRemovePhoto={(id) => {
-        dispatch({ type: 'removePhoto', id })
-        void deletePhoto(id)
-      }}
+      canUndo={canUndo}
+      canRedo={canRedo}
       onNew={() => setStarted(false)}
       onWipe={async () => {
         await wipeEverything()

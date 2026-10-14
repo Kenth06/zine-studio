@@ -10,10 +10,10 @@ Components keep using Kumo's semantic classes (`bg-kumo-base`, `text-kumo-subtle
 ## Principles
 
 1. **The first screen is the tool.** No hero, no feature grid, no onboarding. Someone who lands here can start working in one action.
-2. **Paper and ink.** The interface is warm neutrals. The user's work (their photos) is the only strong colour on screen.
+2. **White paper, black ink.** The interface is white with near-neutral greys. The user's work (their photos) is the only strong colour on screen.
 3. **One accent, one place.** Vermilion marks the single primary action of a screen. Nothing else is accented.
 4. **Say what it does, in numbers.** «8 páginas · Carta · se corta 1 vez», not «Crea zines increíbles».
-5. **Privacy is a fact, stated once.** One plain sentence near the work: «Nada se sube. Las fotos se quedan en este navegador.» No shields, no badges.
+5. **No text that doesn't help the next action.** No taglines, no reassurance copy, no captions that repeat what the screen already shows. Privacy is a property of the architecture, documented in the README, not a line in the UI.
 6. **Motion explains or it doesn't happen.** A page settling into place, a sheet folding. Never decoration. Always respect `prefers-reduced-motion`.
 7. **Everything draggable has a keyboard path.** Buttons to move, a click to assign, arrows to nudge.
 
@@ -25,34 +25,38 @@ Two layers: **chrome** (the app around the work) follows the system light/dark m
 
 | Token | Value | Use |
 | --- | --- | --- |
-| `--color-kumo-canvas` | `#f1efe9` | Page background |
-| `--color-kumo-base` | `#fbfaf7` | Panels, cards, header |
-| `--color-kumo-elevated` | `#f6f4ef` | Card headers, hover |
-| `--color-kumo-recessed` | `#e8e5dd` | Work area behind the paper, segmented tracks |
-| `--color-kumo-hairline` | `#e2ded4` | Borders on flat surfaces |
-| `--color-kumo-line` | `rgb(37 36 31 / .12)` | Borders on raised surfaces (with shadow) |
-| `--text-color-kumo-default` | `#25241f` | Ink |
-| `--text-color-kumo-subtle` | `#6b675e` | Secondary text (AA on canvas) |
+| `--color-kumo-canvas` | `#ffffff` | Page background (with the cutting-mat dots) |
+| `--color-kumo-elevated` / `recessed` / `tint` | `#fafaf9` / `#f5f5f4` / `#f5f5f4` | Hover, tracks, field backgrounds |
+| `--color-kumo-fill` | `#e7e5e4` | Slider fill |
+| `--color-kumo-hairline` | `#ecebea` | Dividers |
+| `--color-kumo-line` | `rgb(0 0 0 / .1)` | Rings on raised surfaces |
+| `--color-kumo-contrast` | `#1c1917` | Selected segment, selected ring |
+| `--text-color-kumo-default` | `#1c1917` | Ink |
+| `--text-color-kumo-subtle` | `#6f6a66` | Secondary text (AA on white) |
 | `--color-kumo-brand` | `#c2401f` | Vermilion. Primary action only |
+| `--focus-ring` | `#2563eb` | Keyboard focus only, never selection |
 
 ### Chrome — dark
 
-Warm near-black, never blue: canvas `#151411`, base `#1c1b17`, recessed `#100f0d`, ink `#ecebe5`, subtle `#a39f94`, accent `#d9542f`.
+Warm near-black, never blue: canvas `#151411`, base `#1c1b17`, ink `#ecebe5`, subtle `#a39f94`, accent `#d9542f`, focus `#60a5fa`.
 
 ### Paper
 
 | Token | Value |
 | --- | --- |
-| `--paper-sheet` | `#f8f6f1` |
-| `--paper-ink` | `#25241f` |
-| `--paper-guide` | `rgb(37 36 31 / .28)`, 1 px dashed: safe zone, empty slots |
-| `--paper-shadow` | `0 1px 2px rgb(45 41 31 / .08), 0 8px 24px rgb(45 41 31 / .1)` |
+| `--paper-sheet` | `#ffffff` |
+| `--paper-ink` | `#1c1917` |
+| `--paper-guide` | `rgb(0 0 0 / .24)`, 1 px dashed: safe zone, folds, empty slots |
+| `--paper-placeholder` | `rgb(0 0 0 / .5)`: placeholder text on paper (AA) |
+| `--paper-shadow` | `0 0 0 1px rgb(0 0 0 / .06), 0 1px 2px rgb(0 0 0 / .05), 0 10px 30px -10px rgb(0 0 0 / .14)` |
 | `--paper-radius` | `2px` |
 | `--mat-dot` | Cutting-mat dots behind the work |
+| `--image-outline` | 1 px inset outline on photos, pure black at 10 % |
 
 ### States
 
-- **Selected** (a page, a slot, a format): 2 px ink ring (`ring-kumo-focus`), offset when it wraps paper.
+- **Selected** (a page, a slot, a format): 2 px ink ring (`kumo-contrast`), offset when it wraps paper; on photos, drawn above the image with a white inner edge.
+- **Focused** (keyboard): 2 px blue outline (`.focus-ring`), offset 2 px. Never the same look as selected.
 - **Selected with accent** (rare, e.g. a chosen preset): `--accent-tint` background (accent at 10 %) with accent text.
 - **Warnings** use Kumo's warning/danger tints, never the accent.
 
@@ -76,19 +80,19 @@ Warm near-black, never blue: canvas `#151411`, base `#1c1b17`, recessed `#100f0d
 | `--paper-radius` | 2 px | Paper. Almost square, like a trimmed sheet |
 
 Hairlines are 1 px rings (`ring-1 ring-kumo-hairline`) on flat surfaces; raised surfaces get `kumo-line` plus `--float-shadow`.
-Shadows are warm (`rgb(45 41 31 / …)`) and small. No large diffuse glows.
+Shadows are neutral and small. No large diffuse glows.
 
 ## Motion
 
 | Token | Value |
 | --- | --- |
 | `--dur-micro` / `quick` / `fast` / `medium` | 80 / 150 / 250 / 350 ms |
-| `--dur-enter` / `--dur-exit` | 400 / 300 ms |
+| `--dur-enter` / `--dur-exit` | 300 / 150 ms |
 | `--ease-out` | `cubic-bezier(0.22, 1, 0.36, 1)` — default |
-| `--ease-spring` | `cubic-bezier(0.34, 1.56, 0.64, 1)` — something landing in place |
 | `--ease-exit` | `cubic-bezier(0.25, 0.46, 0.45, 0.94)` |
 
-Hover and focus changes use `quick`. Press feedback is `scale(0.97)`.
+Hover and focus changes use `quick`. Press feedback is `scale(0.96)` over 150 ms. No overshoot or bounce.
+Entrances move only `opacity` and `transform`; under reduced motion they become an opacity fade.
 
 ## Layout
 
@@ -132,6 +136,7 @@ are the only illustrations.
 - Verbs on buttons: «Exportar», «Descargar para imprimir», «Elegir fotos».
 - Numbers before adjectives: «3 páginas en blanco», «212 ppp».
 - Errors say what happened and what to do next, in one or two sentences.
+- Destructive actions are instant and undoable: a toast with «Deshacer», plus Ctrl+Z. Confirm only what can't be undone (replacing a draft, wiping storage).
 
 ## Don't
 

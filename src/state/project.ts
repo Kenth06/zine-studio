@@ -2,7 +2,7 @@ import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
 import type { PhotoFill } from '../lib/crop'
 import type { FormatId, PaperId } from '../lib/formats'
 import { autoFill, blankFill, createProject, newPage, withTemplate, type PhotoMeta, type Project } from '../lib/model'
-import { loadProject, loadThumb, saveProject } from '../lib/storage'
+import { collectPhotos, loadProject, loadThumb, saveProject } from '../lib/storage'
 import type { TemplateId } from '../lib/templates'
 
 export type Action =
@@ -21,6 +21,8 @@ export type Action =
   | { type: 'setPaper'; paper: PaperId }
   | { type: 'setPrint'; bleed?: number; cropMarks?: boolean }
   | { type: 'reset' }
+  | { type: 'undo' }
+  | { type: 'redo' }
 
 function mapPage(p: Project, i: number, fn: (page: Project['pages'][0]) => Project['pages'][0]): Project {
   return { ...p, pages: p.pages.map((page, j) => (j === i ? fn(page) : page)) }
@@ -75,23 +77,70 @@ function reduce(p: Project | null, a: Action): Project | null {
       return { ...p, paper: a.paper }
     case 'setPrint':
       return { ...p, bleed: a.bleed ?? p.bleed, cropMarks: a.cropMarks ?? p.cropMarks }
+    case 'undo':
+    case 'redo':
+      return p
   }
 }
 
-function reducer(p: Project | null, a: Action) {
-  const next = reduce(p, a)
-  return next && next !== p && a.type !== 'load' ? { ...next, updatedAt: Date.now() } : next
+interface History {
+  present: Project | null
+  past: Project[]
+  future: Project[]
+  /** Consecutive edits with the same key collapse into one undo step (a drag, typing). */
+  lastKey: string | null
 }
 
-/** Project state with debounced autosave to IndexedDB. */
+const LIMIT = 100
+
+const coalesceKey = (a: Action) =>
+  a.type === 'updateFill' ? `fill:${a.page}:${a.slot}` : a.type === 'setText' ? `text:${a.page}` : null
+
+function history(h: History, a: Action): History {
+  switch (a.type) {
+    case 'load':
+    case 'create':
+    case 'reset': {
+      const present = reduce(h.present, a)
+      return { present: present && a.type === 'create' ? { ...present, updatedAt: Date.now() } : present, past: [], future: [], lastKey: null }
+    }
+    case 'undo': {
+      if (!h.past.length || !h.present) return h
+      const prev = h.past[h.past.length - 1]
+      return { present: { ...prev, updatedAt: Date.now() }, past: h.past.slice(0, -1), future: [h.present, ...h.future], lastKey: null }
+    }
+    case 'redo': {
+      if (!h.future.length || !h.present) return h
+      const [next, ...rest] = h.future
+      return { present: { ...next, updatedAt: Date.now() }, past: [...h.past, h.present].slice(-LIMIT), future: rest, lastKey: null }
+    }
+  }
+  const next = reduce(h.present, a)
+  if (!next || next === h.present || !h.present) return h
+  const key = coalesceKey(a)
+  const merge = key !== null && key === h.lastKey
+  return {
+    present: { ...next, updatedAt: Date.now() },
+    past: merge ? h.past : [...h.past, h.present].slice(-LIMIT),
+    future: [],
+    lastKey: key,
+  }
+}
+
+/** Project state with undo history and debounced autosave to IndexedDB. */
 export function useProject() {
-  const [project, dispatch] = useReducer(reducer, null)
+  const [h, dispatch] = useReducer(history, { present: null, past: [], future: [], lastKey: null })
   const [ready, setReady] = useState(false)
   const [draft, setDraft] = useState<Project | null>(null)
+  const project = h.present
 
   useEffect(() => {
     loadProject()
-      .then((p) => setDraft(p ?? null))
+      .then(async (p) => {
+        setDraft(p ?? null)
+        // Drop photos no saved project refers to (removed earlier, or from a replaced draft).
+        await collectPhotos(new Set(p?.photos.map((x) => x.id) ?? []))
+      })
       .finally(() => setReady(true))
   }, [])
 
@@ -101,7 +150,7 @@ export function useProject() {
     return () => clearTimeout(t)
   }, [project])
 
-  return { project, dispatch, ready, draft }
+  return { project, dispatch, ready, draft, canUndo: h.past.length > 0, canRedo: h.future.length > 0 }
 }
 
 /** Object URLs for editor previews, loaded lazily from IndexedDB. */

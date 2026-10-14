@@ -7,42 +7,44 @@
 
 :root,
 :root[data-mode="light"] {
-  /* Surfaces, outermost to innermost */
-  --color-kumo-canvas: #f1efe9;
-  --color-kumo-base: #fbfaf7;
-  --color-kumo-elevated: #f6f4ef;
-  --color-kumo-recessed: #e8e5dd;
-  --color-kumo-tint: #ece9e2;
-  --color-kumo-overlay: #f6f4ef;
-  --color-kumo-control: #fdfcfa;
-  --color-kumo-fill: #e3dfd5;
-  --color-kumo-fill-hover: #ece9e2;
-  --color-kumo-interact: #d3cec2;
-  --color-kumo-contrast: #25241f;
+  /* Surfaces, outermost to innermost: white, with near-neutral greys */
+  --color-kumo-canvas: #ffffff;
+  --color-kumo-base: #ffffff;
+  --color-kumo-elevated: #fafaf9;
+  --color-kumo-recessed: #f5f5f4;
+  --color-kumo-tint: #f5f5f4;
+  --color-kumo-overlay: #ffffff;
+  --color-kumo-control: #ffffff;
+  --color-kumo-fill: #e7e5e4;
+  --color-kumo-fill-hover: #f5f5f4;
+  --color-kumo-interact: #d6d3d1;
+  --color-kumo-contrast: #1c1917;
 
   /* Lines */
-  --color-kumo-hairline: #e2ded4;
-  --color-kumo-line: rgb(37 36 31 / 0.12);
-  --color-kumo-focus: #25241f;
+  --color-kumo-hairline: #ecebea;
+  --color-kumo-line: rgb(0 0 0 / 0.1);
+  --color-kumo-focus: #2563eb;
+  --focus-ring: #2563eb;
 
   /* Ink */
-  --text-color-kumo-default: #25241f;
-  --text-color-kumo-strong: #171612;
-  --text-color-kumo-subtle: #6b675e;
-  --text-color-kumo-inactive: #aaa59a;
-  --text-color-kumo-placeholder: #9a958a;
-  --text-color-kumo-inverse: #f6f4ef;
+  --text-color-kumo-default: #1c1917;
+  --text-color-kumo-strong: #0c0a09;
+  --text-color-kumo-subtle: #6f6a66;
+  --text-color-kumo-inactive: #b5b1ad;
+  --text-color-kumo-placeholder: #a19d99;
+  --text-color-kumo-inverse: #ffffff;
 
   /* The one accent: vermilion, for the primary action of a screen only */
   --color-kumo-brand: #c2401f;
   --color-kumo-brand-hover: #a8361a;
 
-  /* Paper layer: the zine canvas. Never changes with dark mode. */
-  --paper-sheet: #f8f6f1;
-  --paper-ink: #25241f;
-  --paper-guide: rgb(37 36 31 / 0.28);
-  --paper-empty: rgb(37 36 31 / 0.05);
-  --paper-shadow: 0 1px 2px rgb(45 41 31 / 0.08), 0 8px 24px rgb(45 41 31 / 0.1);
+  /* Paper layer: the zine canvas. White sheets, never changes with dark mode. */
+  --paper-sheet: #ffffff;
+  --paper-ink: #1c1917;
+  --paper-guide: rgb(0 0 0 / 0.24);
+  --paper-placeholder: rgb(0 0 0 / 0.5);
+  --paper-empty: rgb(0 0 0 / 0.035);
+  --paper-shadow: 0 0 0 1px rgb(0 0 0 / 0.06), 0 1px 2px rgb(0 0 0 / 0.05), 0 10px 30px -10px rgb(0 0 0 / 0.14);
   --paper-radius: 2px;
 
   /* Selected state: the accent at 10 %, text in full accent */
@@ -55,26 +57,28 @@
   --radius-dock: 18px;
 
   /* Floating surfaces: corner buttons, docks, contextual toolbars */
-  --float-bg: rgb(251 250 247 / 0.86);
-  --float-ring: rgb(37 36 31 / 0.08);
-  --float-shadow: 0 2px 8px rgb(45 41 31 / 0.05), 0 14px 40px rgb(45 41 31 / 0.12);
-  --cta-shadow: 0 2px 8px -2px rgb(45 41 31 / 0.25), 0 4px 16px -4px rgb(194 64 31 / 0.35), inset 0 1px 0 rgb(255 255 255 / 0.18);
+  --float-bg: rgb(255 255 255 / 0.9);
+  --float-ring: rgb(0 0 0 / 0.07);
+  --float-shadow: 0 1px 2px rgb(0 0 0 / 0.04), 0 8px 28px -6px rgb(0 0 0 / 0.12);
+  --cta-shadow: 0 2px 8px -2px rgb(0 0 0 / 0.2), 0 4px 16px -4px rgb(194 64 31 / 0.3), inset 0 1px 0 rgb(255 255 255 / 0.18);
 
   /* Cutting-mat dots behind the work, one every 16 px */
-  --mat-dot: rgb(37 36 31 / 0.13);
+  --mat-dot: rgb(0 0 0 / 0.09);
+
+  /* 1px inset outline on photos, pure black at 10% so it never tints the edge */
+  --image-outline: rgb(0 0 0 / 0.1);
 
   /* Print marks drawn around sheets in the proof */
-  --mark: rgb(37 36 31 / 0.55);
+  --mark: rgb(0 0 0 / 0.45);
 
   /* Motion */
   --dur-micro: 80ms;
   --dur-quick: 150ms;
   --dur-fast: 250ms;
   --dur-medium: 350ms;
-  --dur-enter: 400ms;
-  --dur-exit: 300ms;
+  --dur-enter: 300ms;
+  --dur-exit: 150ms;
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
-  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
   --ease-exit: cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
@@ -93,7 +97,8 @@
 
   --color-kumo-hairline: #2a2923;
   --color-kumo-line: #3a3831;
-  --color-kumo-focus: #ecebe5;
+  --color-kumo-focus: #60a5fa;
+  --focus-ring: #60a5fa;
 
   --text-color-kumo-default: #ecebe5;
   --text-color-kumo-strong: #f7f6f2;
@@ -112,4 +117,5 @@
   --cta-shadow: 0 2px 8px -2px rgb(0 0 0 / 0.5), inset 0 1px 0 rgb(255 255 255 / 0.15);
   --mark: rgb(236 235 229 / 0.5);
   --mat-dot: rgb(236 235 229 / 0.09);
+  --image-outline: rgb(255 255 255 / 0.1);
 }

@@ -5,5 +5,8 @@
   // Static assets only: no Worker script, no bindings, nowhere to upload to.
   "assets": {
     "not_found_handling": "single-page-application"
-  }
+  },
+  // Served on workers.dev; branch Previews come from `wrangler preview` in Workers Builds.
+  "workers_dev": true,
+  "preview_urls": true
 }

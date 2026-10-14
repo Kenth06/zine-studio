@@ -9,7 +9,7 @@ export type PhotoResponse =
   | { id: string; ok: true; w: number; h: number; thumb: Blob }
   | { id: string; ok: false; error: string }
 
-const PREVIEW_EDGE = 512
+const PREVIEW_EDGE = 1024
 
 const ctx = self as unknown as {
   onmessage: (e: MessageEvent<PhotoRequest>) => void

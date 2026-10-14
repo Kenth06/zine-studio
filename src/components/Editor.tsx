@@ -3,16 +3,25 @@ import { Dialog } from '@cloudflare/kumo/components/dialog'
 import { DropdownMenu } from '@cloudflare/kumo/components/dropdown'
 import { useKumoToastManager } from '@cloudflare/kumo/components/toast'
 import { cn } from '@cloudflare/kumo/utils'
-import { DotsThreeIcon, DownloadSimpleIcon, FilePlusIcon, ImagesIcon, PlusIcon, TrashIcon } from '@phosphor-icons/react'
+import {
+  ArrowArcLeftIcon,
+  ArrowArcRightIcon,
+  DotsThreeIcon,
+  DownloadSimpleIcon,
+  FilePlusIcon,
+  ImagesIcon,
+  PlusIcon,
+  TrashIcon,
+} from '@phosphor-icons/react'
 import { useEffect, useMemo, useRef, useState, type Dispatch } from 'react'
 import { cropRect, dpiLevel, effectiveDpi } from '../lib/crop'
-import { FORMATS, PAPER, summary, type PaperId } from '../lib/formats'
+import { FORMATS, summary } from '../lib/formats'
 import { padToMultiple, readingSpreads } from '../lib/imposition'
-import { bleedFor, type Project } from '../lib/model'
+import { bleedFor, pageName, type Project } from '../lib/model'
 import { slotsFor } from '../lib/templates'
 import type { Action } from '../state/project'
 import { useViewport } from '../state/viewport'
-import { Bar, CtaButton, Divider, Dock, FloatButton, IconButton, Segment } from './Chrome'
+import { Bar, CtaButton, Divider, Dock, DockButton, FloatButton, IconButton } from './Chrome'
 import { PageTools } from './PageTools'
 import { PageView, PHOTO_MIME } from './PageView'
 import { Proof } from './Proof'
@@ -23,19 +32,24 @@ interface Props {
   dispatch: Dispatch<Action>
   thumbs: Record<string, string>
   importing: number
+  canUndo: boolean
+  canRedo: boolean
   onFiles: (files: File[], fill: boolean) => void
-  onRemovePhoto: (id: string) => void
   onNew: () => void
   onWipe: () => Promise<void>
 }
 
-export function Editor({ project, dispatch, thumbs, importing, onFiles, onRemovePhoto, onNew, onWipe }: Props) {
+const isTyping = (el: EventTarget | null) => el instanceof HTMLElement && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName))
+
+export function Editor({ project, dispatch, thumbs, importing, canUndo, canRedo, onFiles, onNew, onWipe }: Props) {
   const toasts = useKumoToastManager()
   const vp = useViewport()
   const [sel, setSel] = useState<{ page: number; slot: number | null }>({ page: 0, slot: null })
   const [proof, setProof] = useState(false)
   const [confirmWipe, setConfirmWipe] = useState(false)
   const input = useRef<HTMLInputElement>(null)
+  const exportButton = useRef<HTMLButtonElement>(null)
+  const toolsSlot = useRef<HTMLDivElement>(null)
 
   const format = FORMATS[project.format]
   const size = format.pageSize(project.paper)
@@ -43,15 +57,18 @@ export function Editor({ project, dispatch, thumbs, importing, onFiles, onRemove
   const total = project.pages.length
   const page = Math.min(sel.page, total - 1)
   const photos = useMemo(() => new Map(project.photos.map((p) => [p.id, p])), [project.photos])
-  const pxPerMm = Math.min(Math.min(vp.h * 0.6, 520) / size.h, (vp.w - 40) / (2 * size.w))
+  const pxPerMm = Math.min(Math.min(vp.h * 0.6, 520) / size.h, (vp.w - 32) / (2 * size.w))
 
   // Effective DPI of every placed photo: drives warnings in the dock and the proof.
-  const { dpiBySlot, worstDpi, lowDpi, emptySlots } = useMemo(() => {
+  const { dpiBySlot, worstDpi, lowDpi, emptySlots, emptyTexts } = useMemo(() => {
     const bySlot = new Map<string, number>()
     const worst = new Map<string, number>()
     let empty = 0
+    let texts = 0
     project.pages.forEach((pg, pi) => {
-      slotsFor(pg.template, size, bleed)
+      const slots = slotsFor(pg.template, size, bleed)
+      if (slots.some((s) => s.kind === 'text') && !pg.text.trim()) texts++
+      slots
         .filter((s) => s.kind === 'photo')
         .forEach((s, si) => {
           const f = pg.fills[si]
@@ -63,7 +80,7 @@ export function Editor({ project, dispatch, thumbs, importing, onFiles, onRemove
         })
     })
     const low = [...worst.values()].filter((d) => dpiLevel(d) !== 'ok').length
-    return { dpiBySlot: bySlot, worstDpi: worst, lowDpi: low, emptySlots: empty }
+    return { dpiBySlot: bySlot, worstDpi: worst, lowDpi: low, emptySlots: empty, emptyTexts: texts }
   }, [project.pages, photos, size, bleed])
 
   // Drop photos anywhere, or paste them.
@@ -89,6 +106,28 @@ export function Editor({ project, dispatch, thumbs, importing, onFiles, onRemove
       window.removeEventListener('drop', onDrop)
     }
   }, [onFiles])
+
+  // Undo / redo. Text fields keep their own native undo.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.metaKey || e.ctrlKey) || isTyping(e.target) || proof) return
+      const k = e.key.toLowerCase()
+      if (k === 'z' && !e.shiftKey) dispatch({ type: 'undo' })
+      else if ((k === 'z' && e.shiftKey) || k === 'y') dispatch({ type: 'redo' })
+      else return
+      e.preventDefault()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [dispatch, proof])
+
+  // Keep the selected spread's tools visible above the dock.
+  useEffect(() => {
+    toolsSlot.current?.scrollIntoView({ block: 'nearest', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })
+  }, [page, sel.slot])
+
+  const undoable = (title: string) =>
+    toasts.add({ title, actions: [{ children: 'Deshacer', onClick: () => dispatch({ type: 'undo' }) }] })
 
   const missing = project.format === 'booklet' ? padToMultiple(total, 4) - total : 0
   const current = project.pages[page]
@@ -118,7 +157,9 @@ export function Editor({ project, dispatch, thumbs, importing, onFiles, onRemove
 
   return (
     <div className="mat min-h-full" onClick={deselect}>
-      <div className="fixed top-4 left-4 z-30 flex items-center gap-3 sm:left-5">
+      <h1 className="sr-only">Zine Studio · {summary(project.format, project.paper, total)}</h1>
+
+      <div className="fixed top-[max(1rem,env(safe-area-inset-top))] left-4 z-30 flex items-center gap-2 sm:left-5">
         <DropdownMenu>
           <DropdownMenu.Trigger render={<FloatButton aria-label="Menú" />}>
             <DotsThreeIcon size={18} weight="bold" />
@@ -132,29 +173,27 @@ export function Editor({ project, dispatch, thumbs, importing, onFiles, onRemove
             </DropdownMenu.Item>
           </DropdownMenu.Content>
         </DropdownMenu>
-        <div className="hidden flex-col sm:flex">
-          <span className="text-[13px] leading-tight font-semibold tracking-tight text-kumo-default">zine studio</span>
-          <Slug className="leading-tight">{summary(project.format, project.paper, total)}</Slug>
-        </div>
+        <FloatButton aria-label="Deshacer" title="Deshacer (Ctrl+Z)" disabled={!canUndo} onClick={() => dispatch({ type: 'undo' })} className="disabled:opacity-40">
+          <ArrowArcLeftIcon size={16} />
+        </FloatButton>
+        <FloatButton aria-label="Rehacer" title="Rehacer (Ctrl+Shift+Z)" disabled={!canRedo} onClick={() => dispatch({ type: 'redo' })} className="disabled:opacity-40">
+          <ArrowArcRightIcon size={16} />
+        </FloatButton>
       </div>
 
-      <div className="fixed top-4 right-4 z-30 sm:right-5">
-        <CtaButton onClick={() => setProof(true)}>
+      <div className="fixed top-[max(1rem,env(safe-area-inset-top))] right-4 z-30 sm:right-5">
+        <CtaButton ref={exportButton} onClick={() => setProof(true)}>
           <DownloadSimpleIcon size={16} weight="bold" />
           Exportar
         </CtaButton>
       </div>
 
-      <main className="flex flex-col items-center gap-12 px-4 pt-24 pb-44" onClick={deselect}>
+      <main className="flex flex-col items-center gap-6 px-4 pt-24 pb-40" onClick={deselect}>
         {readingSpreads(total).map((spread) => {
           const active = spread.includes(page + 1)
-          const lone = spread.length === 1
           return (
             <figure key={spread.join('-')} className="flex flex-col items-center gap-3" onClick={deselect}>
-              <div
-                className={cn('flex gap-0.5', lone && (spread[0] === 1 ? 'justify-end' : 'justify-start'))}
-                style={{ width: 2 * size.w * pxPerMm + 2 }}
-              >
+              <div className="flex gap-0.5">
                 {spread.map((n) => (
                   <PageView
                     key={project.pages[n - 1].id}
@@ -170,82 +209,90 @@ export function Editor({ project, dispatch, thumbs, importing, onFiles, onRemove
                     onSelect={(slot) => setSel({ page: n - 1, slot })}
                     onAssign={(slot, photoId) => dispatch({ type: 'assign', page: n - 1, slot, photoId })}
                     onFill={(slot, f) => dispatch({ type: 'updateFill', page: n - 1, slot, fill: f })}
-                    onClear={(slot) => dispatch({ type: 'clearSlot', page: n - 1, slot })}
+                    onClear={(slot) => {
+                      dispatch({ type: 'clearSlot', page: n - 1, slot })
+                      undoable('Foto quitada del hueco')
+                    }}
                     onText={(text) => dispatch({ type: 'setText', page: n - 1, text })}
                   />
                 ))}
               </div>
-              <figcaption>
-                <Slug>{spread.map((n) => (n === 1 ? 'Portada' : n === total ? 'Contraportada' : String(n).padStart(2, '0'))).join(' · ')}</Slug>
+              <figcaption className="flex gap-2">
+                {spread.map((n) => (
+                  <Slug key={n} className={n === page + 1 ? 'text-kumo-default' : ''}>
+                    {n === 1 ? 'Portada' : n === total ? 'Contraportada' : String(n).padStart(2, '0')}
+                  </Slug>
+                ))}
               </figcaption>
-              {active && (
-                <PageTools
-                  page={current}
-                  index={page}
-                  total={total}
-                  size={size}
-                  fixedPages={!!format.fixedPages}
-                  photos={photos}
-                  thumbs={thumbs}
-                  photo={
-                    fill && fillMeta && sel.slot !== null
-                      ? { meta: fillMeta, fill, slot: sel.slot, dpi: dpiBySlot.get(`${page}:${sel.slot}`) ?? 0 }
-                      : undefined
-                  }
-                  onTemplate={(template) => {
-                    dispatch({ type: 'setTemplate', page, template })
-                    setSel({ page, slot: null })
-                  }}
-                  onMove={(to) => {
-                    dispatch({ type: 'movePage', from: page, to })
-                    setSel({ page: to, slot: null })
-                  }}
-                  onAdd={() => {
-                    dispatch({ type: 'addPage', after: page })
-                    setSel({ page: page + 1, slot: null })
-                  }}
-                  onRemove={() => {
-                    dispatch({ type: 'removePage', page })
-                    setSel({ page: Math.max(0, page - 1), slot: null })
-                  }}
-                  onFill={(slot, f) => dispatch({ type: 'updateFill', page, slot, fill: f })}
-                  onClear={(slot) => dispatch({ type: 'clearSlot', page, slot })}
-                />
-              )}
+              {/* Reserved under every spread so selecting another page never shifts the layout. */}
+              <div ref={active ? toolsSlot : undefined} className="flex h-16 max-w-full scroll-mb-28 items-start justify-center">
+                {active && (
+                  <PageTools
+                    page={current}
+                    index={page}
+                    total={total}
+                    size={size}
+                    fixedPages={!!format.fixedPages}
+                    photos={photos}
+                    thumbs={thumbs}
+                    photo={
+                      fill && fillMeta && sel.slot !== null
+                        ? { meta: fillMeta, fill, slot: sel.slot, dpi: dpiBySlot.get(`${page}:${sel.slot}`) ?? 0 }
+                        : undefined
+                    }
+                    onTemplate={(template) => {
+                      dispatch({ type: 'setTemplate', page, template })
+                      setSel({ page, slot: null })
+                    }}
+                    onMove={(to) => {
+                      dispatch({ type: 'movePage', from: page, to })
+                      setSel({ page: to, slot: null })
+                    }}
+                    onAdd={() => {
+                      dispatch({ type: 'addPage', after: page })
+                      setSel({ page: page + 1, slot: null })
+                    }}
+                    onRemove={() => {
+                      dispatch({ type: 'removePage', page })
+                      setSel({ page: Math.max(0, page - 1), slot: null })
+                      undoable(`${pageName(page, total)} eliminada`)
+                    }}
+                    onFill={(slot, f) => dispatch({ type: 'updateFill', page, slot, fill: f })}
+                    onClear={(slot) => {
+                      dispatch({ type: 'clearSlot', page, slot })
+                      setSel({ page, slot: null })
+                      undoable('Foto quitada del hueco')
+                    }}
+                    onPageTools={() => setSel({ page, slot: null })}
+                  />
+                )}
+              </div>
             </figure>
           )
         })}
       </main>
 
       {missing > 0 && (
-        <div className="fixed bottom-[84px] left-1/2 z-30 -translate-x-1/2">
+        <div className="fixed inset-x-4 bottom-[calc(max(1rem,env(safe-area-inset-bottom))+68px)] z-30 flex justify-center">
           <Bar label="Pliego incompleto" className="pl-3">
             <span className="text-[12px] whitespace-nowrap text-kumo-default">
               Faltan {missing} {missing === 1 ? 'página' : 'páginas'} para el pliego
             </span>
-            <Segment
-              role="button"
-              aria-checked={undefined}
-              onClick={() => dispatch({ type: 'addPage', after: total - 2, count: missing })}
-              className="h-7 text-kumo-default"
-            >
+            <DockButton onClick={() => dispatch({ type: 'addPage', after: total - 2, count: missing })} className="h-7">
               Añadir {missing}
-            </Segment>
+            </DockButton>
           </Bar>
         </div>
       )}
 
-      <Slug className="fixed bottom-6 left-5 hidden xl:block">Nada se sube · todo pasa en este navegador</Slug>
-
       <Dock label="Fotos">
         {project.photos.length === 0 ? (
-          <Segment role="button" aria-checked={undefined} onClick={() => input.current?.click()} className="text-kumo-default">
+          <DockButton onClick={() => input.current?.click()}>
             <ImagesIcon size={16} />
             Elegir fotos
-            <span className="hidden text-kumo-subtle sm:inline">· o suéltalas en cualquier parte</span>
-          </Segment>
+          </DockButton>
         ) : (
-          <ul className="flex max-w-[min(60vw,640px)] gap-1.5 overflow-x-auto p-0.5" aria-label="Fotos">
+          <ul className="no-scrollbar flex max-w-[min(70vw,640px)] gap-1.5 overflow-x-auto p-1" aria-label="Fotos del zine">
             {project.photos.map((photo) => {
               const dpi = worstDpi.get(photo.id)
               const level = dpi === undefined ? null : dpiLevel(dpi)
@@ -261,18 +308,22 @@ export function Editor({ project, dispatch, thumbs, importing, onFiles, onRemove
                     }}
                     onClick={() => pick(photo.id)}
                     onKeyDown={(e) => {
-                      if (e.key === 'Delete' || e.key === 'Backspace') onRemovePhoto(photo.id)
+                      if (e.key !== 'Delete' && e.key !== 'Backspace') return
+                      dispatch({ type: 'removePhoto', id: photo.id })
+                      undoable(`${photo.name} quitada del zine`)
                     }}
-                    aria-label={`${photo.name}${dpi === undefined ? ', sin usar' : ''}`}
+                    aria-label={`${photo.name}${dpi === undefined ? ', sin usar' : ''}. Supr para quitarla.`}
                     title={`${photo.name}${dpi === undefined ? ' · sin usar' : ` · ${dpi} ppp`}`}
                     className={cn(
-                      'block size-10 overflow-hidden rounded-[8px] bg-kumo-recessed outline-none',
-                      'transition-[box-shadow,opacity,transform] duration-(--dur-quick) ease-(--ease-out) focus-visible:ring-2 focus-visible:ring-kumo-focus active:scale-95',
-                      placed ? 'ring-2 ring-kumo-contrast ring-offset-1 ring-offset-(--float-bg)' : 'ring-1 ring-(--float-ring)',
+                      'focus-ring block size-10 rounded-[8px] bg-kumo-recessed',
+                      'transition-[box-shadow,opacity,scale] duration-(--dur-quick) ease-out active:scale-[0.96]',
+                      placed ? 'ring-2 ring-kumo-contrast ring-offset-1 ring-offset-(--float-bg)' : '',
                       dpi === undefined && 'opacity-55 hover:opacity-100',
                     )}
                   >
-                    {thumbs[photo.id] && <img src={thumbs[photo.id]} alt="" draggable={false} className="size-full object-cover" />}
+                    {thumbs[photo.id] && (
+                      <img src={thumbs[photo.id]} alt="" draggable={false} className="photo-outline size-full rounded-[8px] object-cover" />
+                    )}
                   </button>
                   {level && level !== 'ok' && (
                     <span
@@ -288,18 +339,11 @@ export function Editor({ project, dispatch, thumbs, importing, onFiles, onRemove
             })}
           </ul>
         )}
+        <Divider />
         <IconButton aria-label="Añadir fotos" title="Añadir fotos" onClick={() => input.current?.click()}>
           <PlusIcon size={16} />
         </IconButton>
         {importing > 0 && <Slug className="px-1 whitespace-nowrap">Leyendo {importing}…</Slug>}
-        <Divider />
-        <div role="radiogroup" aria-label="Papel" className="flex">
-          {(['letter', 'a4'] as PaperId[]).map((p) => (
-            <Segment key={p} selected={project.paper === p} onClick={() => dispatch({ type: 'setPaper', paper: p })}>
-              {PAPER[p].label}
-            </Segment>
-          ))}
-        </div>
       </Dock>
 
       <input
@@ -321,21 +365,25 @@ export function Editor({ project, dispatch, thumbs, importing, onFiles, onRemove
           thumbs={thumbs}
           lowDpi={lowDpi}
           emptySlots={emptySlots}
-          onClose={() => setProof(false)}
+          emptyTexts={emptyTexts}
+          onClose={() => {
+            setProof(false)
+            requestAnimationFrame(() => exportButton.current?.focus())
+          }}
+          onPaper={(paper) => dispatch({ type: 'setPaper', paper })}
           onPrint={(b, c) => dispatch({ type: 'setPrint', bleed: b, cropMarks: c })}
           onError={(m) => toasts.add({ title: 'No se pudo exportar', description: m, variant: 'error' })}
           onDone={(name) => toasts.add({ title: 'PDF listo', description: name, variant: 'success' })}
         />
       )}
 
-      <Dialog.Root open={confirmWipe} onOpenChange={setConfirmWipe}>
+      <Dialog.Root role="alertdialog" open={confirmWipe} onOpenChange={setConfirmWipe}>
         <Dialog size="sm" className="flex flex-col gap-4 p-6">
           <Dialog.Title className="text-base font-semibold">¿Borrar todo?</Dialog.Title>
-          <Dialog.Description className="text-sm text-kumo-subtle">
+          <Dialog.Description className="text-sm text-pretty text-kumo-subtle">
             Se borran el borrador y todas las fotos guardadas en este navegador. Los PDFs que ya descargaste no se tocan.
           </Dialog.Description>
-          <div className="flex justify-end gap-2">
-            <Dialog.Close render={(props) => <Button {...props} variant="secondary">Cancelar</Button>} />
+          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <Button
               variant="destructive"
               onClick={async () => {
@@ -344,6 +392,9 @@ export function Editor({ project, dispatch, thumbs, importing, onFiles, onRemove
               }}
             >
               Borrar todo
+            </Button>
+            <Button variant="secondary" autoFocus onClick={() => setConfirmWipe(false)}>
+              Cancelar
             </Button>
           </div>
         </Dialog>

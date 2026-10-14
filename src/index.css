@@ -49,12 +49,12 @@ body {
 @keyframes rise {
   from {
     opacity: 0;
-    transform: translate(-50%, 16px);
+    transform: translateY(12px);
   }
 }
 
 .animate-land {
-  animation: land var(--dur-enter) var(--ease-spring) both;
+  animation: land var(--dur-enter) var(--ease-out) both;
 }
 
 .animate-rise {
@@ -67,4 +67,39 @@ body {
   background-image: radial-gradient(var(--mat-dot) 1px, transparent 1.2px);
   background-size: 16px 16px;
   background-attachment: local;
+}
+
+/* Content photos get a hairline so light images don't bleed into white. */
+.photo-outline {
+  outline: 1px solid var(--image-outline);
+  outline-offset: -1px;
+}
+
+/* Keyboard focus: a blue outline, distinct from the ink ring used for "selected". */
+.focus-ring {
+  outline: none;
+}
+.focus-ring:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-land,
+  .animate-rise {
+    animation-name: fade;
+  }
+}
+
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
 }
