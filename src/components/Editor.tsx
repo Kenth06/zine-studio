@@ -233,7 +233,7 @@ export function Editor({ project, dispatch, thumbs, importing, canUndo, canRedo,
         {readingSpreads(total).map((spread) => {
           const active = spread.includes(page + 1)
           return (
-            <figure key={spread.join('-')} className="flex flex-col items-center gap-3" onClick={deselect}>
+            <figure key={spread.join('-')} className="flex max-w-full flex-col items-center gap-3" onClick={deselect}>
               <div className="flex gap-0.5">
                 {spread.map((n) => (
                   <PageView
@@ -268,7 +268,7 @@ export function Editor({ project, dispatch, thumbs, importing, canUndo, canRedo,
                 ))}
               </figcaption>
               {/* Reserved under every spread so selecting another page never shifts the layout. */}
-              <div ref={active ? toolsSlot : undefined} className="flex h-16 max-w-full scroll-mb-28 items-start justify-center">
+              <div ref={active ? toolsSlot : undefined} className="flex h-16 w-full max-w-full min-w-0 scroll-mb-28 items-start justify-center">
                 {active && (
                   <PageTools
                     page={current}

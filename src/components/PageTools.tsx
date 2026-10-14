@@ -48,7 +48,7 @@ function PhotoBar(p: Props & { photo: NonNullable<Props['photo']> }) {
         step={0.01}
         format={(v) => `${Math.round(v * 100)} %`}
         onChange={(zoom) => p.onFill(photo.slot, { ...photo.fill, zoom })}
-        className="min-w-36 flex-1"
+        className="min-w-28 flex-1"
       />
       <span
         title="Puntos por pulgada al imprimir este hueco. 300 es ideal; menos de 150 se ve pixelado."
@@ -57,7 +57,7 @@ function PhotoBar(p: Props & { photo: NonNullable<Props['photo']> }) {
           level === 'bad' ? 'text-kumo-danger' : level === 'warn' ? 'text-kumo-warning' : 'text-kumo-subtle',
         )}
       >
-        {photo.dpi} ppp · {QUALITY[level]}
+        {photo.dpi} ppp<span className="hidden sm:inline"> · {QUALITY[level]}</span>
       </span>
       <IconButton aria-label="Centrar foto" title="Centrar" onClick={() => p.onFill(photo.slot, { ...photo.fill, zoom: 1, fx: 0.5, fy: 0.5 })}>
         <CrosshairIcon size={16} />
@@ -66,9 +66,9 @@ function PhotoBar(p: Props & { photo: NonNullable<Props['photo']> }) {
         <ImageBrokenIcon size={16} />
       </IconButton>
       <Divider />
-      <DockButton onClick={p.onPageTools} className="px-2.5 text-kumo-subtle">
+      <DockButton onClick={p.onPageTools} aria-label="Herramientas de página" className="px-2.5 text-kumo-subtle">
         <SquaresFourIcon size={16} />
-        Página
+        <span className="hidden sm:inline">Página</span>
       </DockButton>
     </Bar>
   )
