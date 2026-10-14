@@ -2,7 +2,7 @@ import { Button } from '@cloudflare/kumo/components/button'
 import { Dialog } from '@cloudflare/kumo/components/dialog'
 import { cn } from '@cloudflare/kumo/utils'
 import { ArrowRightIcon, ImagesIcon } from '@phosphor-icons/react'
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { FORMATS, PAPER, summary, type FormatId, type PaperId } from '../lib/formats'
 import { sheetSides } from '../lib/imposition'
 import type { Project } from '../lib/model'
@@ -45,6 +45,20 @@ export function StartScreen({ draft, onResume, onStart }: Props) {
     if (draft) setPending(photos)
     else onStart(format, paper, photos)
   }
+
+  // Pasting photos works here too, like in the editor.
+  const startRef = useRef(start)
+  useEffect(() => {
+    startRef.current = start
+  })
+  useEffect(() => {
+    const onPaste = (e: ClipboardEvent) => {
+      const files = [...(e.clipboardData?.files ?? [])].filter(isPhotoFile)
+      if (files.length) startRef.current(files)
+    }
+    window.addEventListener('paste', onPaste)
+    return () => window.removeEventListener('paste', onPaste)
+  }, [])
 
   return (
     <main
