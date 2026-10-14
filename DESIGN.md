@@ -62,6 +62,8 @@ One mode: **light**. The app stays white whatever the system appearance, like a 
 - **Slug:** the signature label. Mono, 10.5 px, uppercase, `tracking 0.06em`, subtle ink, tabular numbers.
   Used for metadata a printer would write on a proof: page counts, sizes, «PORTADA», progress. Component: `<Slug>`.
 - **Wordmark:** lowercase product name, semibold, `tracking-tight`. No logo lockups in the UI.
+- **Hand:** Shantell Sans Variable (`font-hand`), only on hand-drawn instruction sheets (the assembly guide). Never for
+  UI controls or labels.
 - **Content:** the zine's own type is separate from the UI (currently a serif). It is embedded in the PDF.
 - Numbers that change (DPI, counts, zoom) use `tabular-nums`.
 
@@ -123,8 +125,12 @@ The work is the interface. There are no panels, sidebars or header bars.
 Kumo provides the accessible primitives (dialog, menu, toast) and the semantic tokens. Do not use `LayerCard`, `Tabs`
 or default `Button` styling for app chrome: they read as an admin console.
 
-Diagrams that explain the physical result — the sheet with its folds, the cut, the page order — are drawn at scale and
-are the only illustrations.
+Diagrams that explain the physical result are the only illustrations, in two registers:
+
+- **Exact:** the sheet with its folds, cut and page order, drawn at scale (`Sheet`). Used where precision matters.
+- **By hand:** the assembly guide (`FoldGuide`), sketched like a printed instruction sheet: ink strokes at 1.5 px with
+  round caps, dashed folds, a heavier cut line, a light SVG turbulence filter for the pen wobble, and captions in
+  `font-hand`. Steps must match the real imposition and the user's settings. Ink only, no colour.
 
 ## Interaction
 
