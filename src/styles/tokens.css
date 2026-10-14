@@ -1,0 +1,99 @@
+/*
+ * Taller — design tokens.
+ * Warm paper and ink neutrals layered on top of Kumo's semantic tokens.
+ * Components keep using `bg-kumo-*` / `text-kumo-*`; only the values change.
+ * See DESIGN.md for the rules behind every value.
+ */
+
+:root,
+:root[data-mode="light"] {
+  /* Surfaces, outermost to innermost */
+  --color-kumo-canvas: #f1efe9;
+  --color-kumo-base: #fbfaf7;
+  --color-kumo-elevated: #f6f4ef;
+  --color-kumo-recessed: #e8e5dd;
+  --color-kumo-tint: #ece9e2;
+  --color-kumo-overlay: #f6f4ef;
+  --color-kumo-control: #fdfcfa;
+  --color-kumo-fill: #e3dfd5;
+  --color-kumo-fill-hover: #ece9e2;
+  --color-kumo-interact: #d3cec2;
+
+  /* Lines */
+  --color-kumo-hairline: #e2ded4;
+  --color-kumo-line: rgb(37 36 31 / 0.12);
+  --color-kumo-focus: #25241f;
+
+  /* Ink */
+  --text-color-kumo-default: #25241f;
+  --text-color-kumo-strong: #171612;
+  --text-color-kumo-subtle: #6b675e;
+  --text-color-kumo-inactive: #aaa59a;
+  --text-color-kumo-placeholder: #9a958a;
+  --text-color-kumo-inverse: #f6f4ef;
+
+  /* The one accent: vermilion, for the primary action of a screen only */
+  --color-kumo-brand: #c2401f;
+  --color-kumo-brand-hover: #a8361a;
+
+  /* Paper layer: the zine canvas. Never changes with dark mode. */
+  --paper-sheet: #f8f6f1;
+  --paper-ink: #25241f;
+  --paper-guide: rgb(37 36 31 / 0.28);
+  --paper-empty: rgb(37 36 31 / 0.05);
+  --paper-shadow: 0 1px 2px rgb(45 41 31 / 0.08), 0 8px 24px rgb(45 41 31 / 0.1);
+  --paper-radius: 2px;
+
+  /* Selected state: the accent at 10 %, text in full accent */
+  --accent-tint: color-mix(in oklch, var(--color-kumo-brand) 10%, transparent);
+
+  /* Radii */
+  --radius-control: 6px;
+  --radius-panel: 8px;
+  --radius-card: 12px;
+  --radius-dock: 18px;
+
+  /* Floating surfaces (popovers, docks) */
+  --float-shadow: 0 2px 8px rgb(45 41 31 / 0.05), 0 12px 32px rgb(45 41 31 / 0.1);
+
+  /* Motion */
+  --dur-micro: 80ms;
+  --dur-quick: 150ms;
+  --dur-fast: 250ms;
+  --dur-medium: 350ms;
+  --dur-enter: 400ms;
+  --dur-exit: 300ms;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-exit: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+:root[data-mode="dark"] {
+  --color-kumo-canvas: #151411;
+  --color-kumo-base: #1c1b17;
+  --color-kumo-elevated: #191814;
+  --color-kumo-recessed: #100f0d;
+  --color-kumo-tint: #26251f;
+  --color-kumo-overlay: #22211c;
+  --color-kumo-control: #1f1e1a;
+  --color-kumo-fill: #2c2a24;
+  --color-kumo-fill-hover: #33312a;
+  --color-kumo-interact: #3d3b33;
+
+  --color-kumo-hairline: #2a2923;
+  --color-kumo-line: #3a3831;
+  --color-kumo-focus: #ecebe5;
+
+  --text-color-kumo-default: #ecebe5;
+  --text-color-kumo-strong: #f7f6f2;
+  --text-color-kumo-subtle: #a39f94;
+  --text-color-kumo-inactive: #5f5b52;
+  --text-color-kumo-placeholder: #77736a;
+  --text-color-kumo-inverse: #1c1b17;
+
+  --color-kumo-brand: #d9542f;
+  --color-kumo-brand-hover: #e2683f;
+
+  --paper-shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 24px rgb(0 0 0 / 0.35);
+  --float-shadow: 0 2px 8px rgb(0 0 0 / 0.3), 0 12px 32px rgb(0 0 0 / 0.35);
+}
