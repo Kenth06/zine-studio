@@ -59,15 +59,13 @@ export function PageView(props: Props) {
         if (slot.kind === 'text') {
           const fs = ((textSizePt(size) * 25.4) / 72) * pxPerMm
           return (
-            <textarea
+            <TextSlot
               key={i}
-              value={page.text}
-              onChange={(e) => props.onText(e.target.value)}
-              onFocus={() => props.onSelect(null)}
-              placeholder="Escribe aquí"
-              aria-label={`Texto de la página ${props.number}`}
-              className="absolute resize-none overflow-hidden bg-transparent font-serif text-(--paper-ink) outline-hidden placeholder:text-(--paper-placeholder) focus:bg-(--paper-empty) focus-visible:outline-2 focus-visible:outline-(--focus-ring)"
+              text={page.text}
+              number={props.number}
               style={{ ...style, fontSize: fs, lineHeight: 1.35 }}
+              onText={props.onText}
+              onFocus={() => props.onSelect(null)}
             />
           )
         }
@@ -92,6 +90,53 @@ export function PageView(props: Props) {
         />
       )}
     </div>
+  )
+}
+
+/** Text written straight on the page. Flags text that won't fit, because the PDF cuts it. */
+function TextSlot(p: {
+  text: string
+  number: number
+  style: React.CSSProperties
+  onText: (text: string) => void
+  onFocus: () => void
+}) {
+  const ref = useRef<HTMLTextAreaElement>(null)
+  const [overflow, setOverflow] = useState(false)
+
+  useLayoutEffect(() => {
+    const t = ref.current
+    if (t) setOverflow(t.scrollHeight > t.clientHeight + 1)
+  }, [p.text, p.style.fontSize])
+
+  return (
+    <>
+      <textarea
+        ref={ref}
+        value={p.text}
+        onChange={(e) => p.onText(e.target.value)}
+        onFocus={p.onFocus}
+        placeholder="Escribe aquí"
+        aria-label={`Texto de la página ${p.number}`}
+        aria-invalid={overflow}
+        aria-describedby={overflow ? `overflow-${p.number}` : undefined}
+        className={cn(
+          'absolute resize-none overflow-hidden bg-transparent font-serif text-(--paper-ink) outline-hidden placeholder:text-(--paper-placeholder)',
+          'focus:bg-(--paper-empty) focus-visible:outline-2 focus-visible:outline-(--focus-ring)',
+          overflow && 'outline-1 outline-offset-1 outline-kumo-warning outline-dashed',
+        )}
+        style={p.style}
+      />
+      {overflow && (
+        <span
+          id={`overflow-${p.number}`}
+          className="pointer-events-none absolute rounded-sm bg-(--paper-sheet) px-1 font-sans text-[10px] font-medium text-kumo-warning"
+          style={{ left: p.style.left, top: `calc(${p.style.top} + ${p.style.height} - 14px)` }}
+        >
+          No cabe
+        </span>
+      )}
+    </>
   )
 }
 
