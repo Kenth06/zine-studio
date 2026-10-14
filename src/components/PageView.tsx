@@ -1,7 +1,9 @@
 import { cn } from '@cloudflare/kumo/utils'
 import { ImageIcon } from '@phosphor-icons/react'
-import { useRef, useState, type KeyboardEvent, type PointerEvent } from 'react'
-import { cropRect, panFill, type PhotoFill } from '../lib/crop'
+import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react'
+import { cropRect, MAX_ZOOM, panFill, type PhotoFill } from '../lib/crop'
+
+const clampZoom = (z: number) => Math.min(MAX_ZOOM, Math.max(1, z))
 import { marginFor } from '../lib/formats'
 import type { Page, PhotoMeta } from '../lib/model'
 import { slotsFor, textSizePt } from '../lib/templates'
@@ -106,8 +108,29 @@ function PhotoSlot(
   const meta = fill ? props.photos.get(fill.photoId) : undefined
   const url = fill ? props.thumbs[fill.photoId] : undefined
   const active = selected && selectedSlot === index
-  const drag = useRef<{ x: number; y: number; fill: PhotoFill } | null>(null)
+  // One pointer pans; a second one turns the gesture into a pinch. Extra fingers are ignored.
+  const pointers = useRef(new Map<number, { x: number; y: number }>())
+  const drag = useRef<{ x: number; y: number; fill: PhotoFill; pinch?: number } | null>(null)
   const [over, setOver] = useState(false)
+  const el = useRef<HTMLDivElement>(null)
+  const latest = useRef({ fill, onFill: props.onFill })
+  useLayoutEffect(() => {
+    latest.current = { fill, onFill: props.onFill }
+  })
+
+  // Wheel zooms the selected photo. Needs a non-passive listener to keep the page from scrolling.
+  useEffect(() => {
+    const node = el.current
+    if (!node || !active || !fill) return
+    const onWheel = (e: WheelEvent) => {
+      const f = latest.current.fill
+      if (!f) return
+      e.preventDefault()
+      latest.current.onFill(index, { ...f, zoom: clampZoom(f.zoom * Math.exp(-e.deltaY * 0.0015)) })
+    }
+    node.addEventListener('wheel', onWheel, { passive: false })
+    return () => node.removeEventListener('wheel', onWheel)
+  }, [active, fill, index])
 
   const onPointerDown = (e: PointerEvent<HTMLDivElement>) => {
     // A second click on an empty, already selected slot asks for a photo for it.
@@ -116,18 +139,37 @@ function PhotoSlot(
       return
     }
     props.onSelect(index)
-    if (!fill || !meta) return
+    if (!fill || !meta || pointers.current.size >= 2) return
+    pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
     try {
       e.currentTarget.setPointerCapture(e.pointerId)
     } catch {
       // Synthetic or already-released pointers cannot be captured; dragging still works without it.
     }
-    drag.current = { x: e.clientX, y: e.clientY, fill }
+    const pts = [...pointers.current.values()]
+    drag.current =
+      pts.length === 2
+        ? { x: 0, y: 0, fill, pinch: Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y) }
+        : { x: e.clientX, y: e.clientY, fill }
   }
   const onPointerMove = (e: PointerEvent<HTMLDivElement>) => {
     const d = drag.current
-    if (!d || !meta) return
+    if (!d || !meta || !pointers.current.has(e.pointerId)) return
+    pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
+    if (d.pinch) {
+      const pts = [...pointers.current.values()]
+      if (pts.length < 2) return
+      const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y)
+      props.onFill(index, { ...d.fill, zoom: clampZoom((d.fill.zoom * dist) / d.pinch) })
+      return
+    }
     props.onFill(index, panFill(d.fill, meta.w, meta.h, aspect, e.clientX - d.x, e.clientY - d.y, props.slotPxW))
+  }
+  const onPointerEnd = (e: PointerEvent<HTMLDivElement>) => {
+    pointers.current.delete(e.pointerId)
+    // Lifting one finger of a pinch hands back to panning from where the other finger is.
+    const rest = [...pointers.current.values()][0]
+    drag.current = rest && fill ? { x: rest.x, y: rest.y, fill } : null
   }
   const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
     if (e.key === 'Enter' || e.key === ' ') {
@@ -172,10 +214,12 @@ function PhotoSlot(
         fill ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer bg-(--paper-empty)',
         'focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-(--focus-ring)',
       )}
-      style={props.style}
+      ref={el}
+      style={{ ...props.style, touchAction: active && fill ? 'none' : 'manipulation' }}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
-      onPointerUp={() => (drag.current = null)}
+      onPointerUp={onPointerEnd}
+      onPointerCancel={onPointerEnd}
       onKeyDown={onKeyDown}
       onDragOver={(e) => {
         const types = e.dataTransfer.types
