@@ -2,11 +2,13 @@
 @import "@cloudflare/kumo/styles";
 @import "tailwindcss";
 @import "@fontsource-variable/inter";
+@import "@fontsource-variable/shantell-sans";
 @import "./styles/tokens.css";
 
 @theme {
   --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
   --font-serif: "Times New Roman", Times, serif;
+  --font-hand: "Shantell Sans Variable", "Comic Sans MS", cursive;
   --font-mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
 }
 

@@ -9,6 +9,7 @@ import { download, exportPdf } from '../lib/photos'
 import { useViewport } from '../state/viewport'
 import { CtaButton, Dock, DockButton, FloatButton, SegmentGroup } from './Chrome'
 import { StaticPage } from './PageView'
+import { FoldGuide } from './FoldGuide'
 import { Sheet } from './Sheet'
 import { Slug } from './Slug'
 
@@ -25,29 +26,6 @@ interface Props {
   onPrint: (bleed: number | undefined, cropMarks: boolean | undefined) => void
   onDone: (filename: string) => void
   onError: (message: string) => void
-}
-
-function steps(p: Project): string[] {
-  const paper = PAPER[p.paper].label
-  if (p.format === 'mini')
-    return [
-      `Imprime a una cara en ${paper}, al 100 % (tamaño real).`,
-      'Dobla la hoja por las líneas punteadas.',
-      'Corta solo la línea continua del centro.',
-      'Abre el corte, empuja hacia el centro y cierra como un librito. La portada queda afuera.',
-    ]
-  if (p.format === 'booklet') {
-    const sheets = padToMultiple(p.pages.length, 4) / 4
-    return [
-      `Imprime a doble cara en ${paper}, con volteo por el borde corto, al 100 %.`,
-      `Apila ${sheets === 1 ? 'la hoja' : `las ${sheets} hojas`} en el orden en que salen y dóblalas juntas por la mitad.`,
-      'Grapa por el doblez, con dos grapas.',
-    ]
-  }
-  return [
-    `Cada página lleva ${p.bleed} mm de sangrado${p.cropMarks ? ' y marcas de corte' : ''}.`,
-    'Envía el PDF a la imprenta tal cual. Las fotos ya van a 300 ppp como máximo.',
-  ]
 }
 
 function sideLabel(format: Project['format'], s: PrintSide, sheets: number) {
@@ -139,6 +117,7 @@ export function Proof(p: Props) {
       </div>
 
       <div className="mx-auto flex max-w-6xl flex-col gap-10 px-4 pt-24 pb-36 lg:flex-row lg:items-start lg:justify-center">
+        <div className="flex flex-col items-center gap-10" style={{ width: column > 0 ? Math.min(column, 860) : undefined }}>
         <div className={loose ? 'grid grid-cols-2 gap-x-2 gap-y-6' : 'flex flex-col items-center gap-10'}>
           {sides.map((s, i) => (
             <figure key={i} className="animate-land flex flex-col items-center gap-2" style={{ animationDelay: `${Math.min(i, 6) * 40}ms` }}>
@@ -163,19 +142,11 @@ export function Proof(p: Props) {
             </figure>
           ))}
         </div>
+        <FoldGuide format={project.format} paper={project.paper} pages={project.pages.length} bleed={project.bleed} cropMarks={project.cropMarks} />
+        </div>
 
         <aside className="flex w-full max-w-sm flex-col gap-5 self-center lg:sticky lg:top-24 lg:w-72 lg:self-start">
-          <h2 className="text-sm font-medium text-kumo-default">Cómo imprimir</h2>
-          <ol className="flex flex-col gap-2.5">
-            {steps(project).map((s, i) => (
-              <li key={s} className="flex gap-3 text-sm leading-snug text-pretty text-kumo-default">
-                <span className="font-mono text-[11px] leading-5 text-kumo-subtle tabular-nums">{String(i + 1).padStart(2, '0')}</span>
-                <span>{s}</span>
-              </li>
-            ))}
-          </ol>
-
-          <div className="flex flex-col gap-3 border-t border-kumo-hairline pt-4">
+          <div className="flex flex-col gap-3">
             <div className="flex flex-col gap-1.5">
               <Slug>Formato</Slug>
               <SegmentGroup
