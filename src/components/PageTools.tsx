@@ -1,3 +1,4 @@
+import { Tooltip } from '@cloudflare/kumo/components/tooltip'
 import { cn } from '@cloudflare/kumo/utils'
 import { ArrowLeftIcon, ArrowRightIcon, CrosshairIcon, ImageBrokenIcon, PlusIcon, SquaresFourIcon, TrashIcon } from '@phosphor-icons/react'
 import { useRef, type KeyboardEvent } from 'react'
@@ -93,26 +94,30 @@ function PageBar(p: Props) {
         {TEMPLATES.map((t, i) => {
           const on = i === current
           return (
-            <button
+            <Tooltip
               key={t.id}
-              ref={(el) => {
-                refs.current[i] = el
-              }}
-              type="button"
-              role="radio"
-              aria-checked={on}
-              aria-label={t.label}
-              title={t.label}
-              tabIndex={on ? 0 : -1}
-              onClick={() => p.onTemplate(t.id)}
-              className={cn(
-                'focus-ring shrink-0 overflow-hidden rounded-[3px] bg-(--paper-sheet) transition-shadow duration-(--dur-quick)',
-                on ? 'ring-2 ring-kumo-contrast ring-offset-2 ring-offset-(--float-bg)' : 'ring-1 ring-kumo-line hover:ring-kumo-interact',
-              )}
-              style={{ width: p.size.w * px, height: PREVIEW_H }}
-            >
-              <StaticPage page={withTemplate(p.page, t.id)} size={p.size} pxPerMm={px} photos={p.photos} thumbs={p.thumbs} ghost />
-            </button>
+              content={t.label}
+              render={
+                <button
+                  ref={(el) => {
+                    refs.current[i] = el
+                  }}
+                  type="button"
+                  role="radio"
+                  aria-checked={on}
+                  aria-label={t.label}
+                  tabIndex={on ? 0 : -1}
+                  onClick={() => p.onTemplate(t.id)}
+                  className={cn(
+                    'focus-ring shrink-0 overflow-hidden rounded-[3px] bg-(--paper-sheet) transition-shadow duration-(--dur-quick)',
+                    on ? 'ring-2 ring-kumo-contrast ring-offset-2 ring-offset-(--float-bg)' : 'ring-1 ring-kumo-line hover:ring-kumo-interact',
+                  )}
+                  style={{ width: p.size.w * px, height: PREVIEW_H }}
+                >
+                  <StaticPage page={withTemplate(p.page, t.id)} size={p.size} pxPerMm={px} photos={p.photos} thumbs={p.thumbs} ghost />
+                </button>
+              }
+            />
           )
         })}
       </div>

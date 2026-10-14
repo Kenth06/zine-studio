@@ -1,4 +1,5 @@
 import { Toasty } from '@cloudflare/kumo/components/toast'
+import { TooltipProvider } from '@cloudflare/kumo/components/tooltip'
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App'
@@ -10,8 +11,10 @@ if (import.meta.env.PROD && 'serviceWorker' in navigator) {
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <Toasty>
-      <App />
-    </Toasty>
+    <TooltipProvider delay={500}>
+      <Toasty>
+        <App />
+      </Toasty>
+    </TooltipProvider>
   </StrictMode>,
 )

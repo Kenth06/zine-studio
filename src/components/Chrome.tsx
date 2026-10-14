@@ -1,5 +1,13 @@
+import { Tooltip } from '@cloudflare/kumo/components/tooltip'
 import { cn } from '@cloudflare/kumo/utils'
-import { useRef, type ComponentProps, type KeyboardEvent, type ReactNode } from 'react'
+import { useRef, type ComponentProps, type KeyboardEvent, type ReactElement, type ReactNode } from 'react'
+
+type Side = 'top' | 'bottom' | 'left' | 'right'
+
+/** Wrap a control in a grouped tooltip: the first one waits, the next ones open instantly. */
+function withTip(title: string | undefined, side: Side, el: ReactElement) {
+  return title ? <Tooltip content={title} side={side} render={el} /> : el
+}
 
 /**
  * The floating chrome around the work: round corner buttons, the bottom dock,
@@ -9,13 +17,15 @@ import { useRef, type ComponentProps, type KeyboardEvent, type ReactNode } from 
 const floating = 'bg-(--float-bg) shadow-(--float-shadow) ring-1 ring-(--float-ring) backdrop-blur-md'
 const press = 'transition-[color,background-color,scale] duration-(--dur-quick) ease-out active:scale-[0.96]'
 
-export function FloatButton({ className, ...props }: ComponentProps<'button'>) {
-  return (
+export function FloatButton({ className, title, tipSide = 'bottom', ...props }: ComponentProps<'button'> & { tipSide?: Side }) {
+  return withTip(
+    title,
+    tipSide,
     <button
       type="button"
       {...props}
       className={cn(floating, press, 'focus-ring flex size-10 shrink-0 items-center justify-center rounded-full text-kumo-subtle hover:text-kumo-default', className)}
-    />
+    />,
   )
 }
 
@@ -134,8 +144,10 @@ export function SegmentGroup<T extends string | number | boolean>({
   )
 }
 
-export function IconButton({ className, ...props }: ComponentProps<'button'> & { 'aria-label': string }) {
-  return (
+export function IconButton({ className, title, tipSide = 'top', ...props }: ComponentProps<'button'> & { 'aria-label': string; tipSide?: Side }) {
+  return withTip(
+    title,
+    tipSide,
     <button
       type="button"
       {...props}
@@ -144,7 +156,7 @@ export function IconButton({ className, ...props }: ComponentProps<'button'> & {
         'transition-colors duration-(--dur-quick) hover:bg-kumo-tint hover:text-kumo-default disabled:pointer-events-none disabled:opacity-35',
         className,
       )}
-    />
+    />,
   )
 }
 
