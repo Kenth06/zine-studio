@@ -153,6 +153,24 @@ export function useProject() {
     return () => clearTimeout(t)
   }, [project])
 
+  // Closing or hiding the tab can beat the debounce; save right away when that happens.
+  const latest = useRef(project)
+  useEffect(() => {
+    latest.current = project
+  }, [project])
+  useEffect(() => {
+    const flush = () => {
+      if (latest.current && document.visibilityState === 'hidden') void saveProject(latest.current)
+    }
+    const onHide = () => latest.current && void saveProject(latest.current)
+    document.addEventListener('visibilitychange', flush)
+    window.addEventListener('pagehide', onHide)
+    return () => {
+      document.removeEventListener('visibilitychange', flush)
+      window.removeEventListener('pagehide', onHide)
+    }
+  }, [])
+
   return { project, dispatch, ready, draft, canUndo: h.past.length > 0, canRedo: h.future.length > 0 }
 }
 
