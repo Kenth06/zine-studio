@@ -1,7 +1,7 @@
 import type { PhotoRequest, PhotoResponse } from '../workers/photo.worker'
 import type { ExportRequest, ExportResponse } from '../workers/export.worker'
 import type { ExportMode } from './pdf'
-import { uid, type PhotoMeta, type Project } from './model'
+import { sourceKey, uid, type PhotoMeta, type Project } from './model'
 import { loadPhoto, savePhoto } from './storage'
 
 const ACCEPTED = /^image\/(jpeg|png|webp|heic|heif|avif)$/
@@ -57,7 +57,7 @@ export async function importPhoto(file: File): Promise<ImportResult> {
     if (err instanceof DOMException && err.name === 'QuotaExceededError') throw new StorageFullError()
     throw err
   }
-  return { meta: { id, name: file.name, w: res.w, h: res.h }, thumb: res.thumb }
+  return { meta: { id, name: file.name, w: res.w, h: res.h, source: sourceKey(file) }, thumb: res.thumb }
 }
 
 export interface ExportJob {

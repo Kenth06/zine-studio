@@ -1,10 +1,10 @@
 import { Loader } from '@cloudflare/kumo/components/loader'
 import { useKumoToastManager } from '@cloudflare/kumo/components/toast'
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Editor } from './components/Editor'
 import { StartScreen } from './components/StartScreen'
 import type { FormatId, PaperId } from './lib/formats'
-import type { PhotoMeta } from './lib/model'
+import { sourceKey, type PhotoMeta } from './lib/model'
 import { importPhoto, isPhotoFile, StorageFullError } from './lib/photos'
 import { askPersistence, collectPhotos, wipeEverything } from './lib/storage'
 import { useProject, useThumbs } from './state/project'
@@ -15,12 +15,21 @@ export default function App() {
   const [importing, setImporting] = useState(0)
   const [started, setStarted] = useState(false)
   const toasts = useKumoToastManager()
+  const photosRef = useRef<PhotoMeta[]>([])
+  useEffect(() => {
+    photosRef.current = project?.photos ?? []
+  }, [project?.photos])
 
   const addFiles = useCallback(
     async (files: File[], fill: boolean) => {
-      const photos = files.filter(isPhotoFile)
-      const skipped = files.length - photos.length
+      const images = files.filter(isPhotoFile)
+      const skipped = files.length - images.length
       if (skipped) toasts.add({ title: `${skipped} ${skipped === 1 ? 'archivo no es' : 'archivos no son'} una foto`, variant: 'warning' })
+      // Dropping the same folder twice is common; keep one copy of each file.
+      const known = new Set(photosRef.current.map((p) => p.source).filter(Boolean))
+      const photos = images.filter((f) => !known.has(sourceKey(f)))
+      const repeated = images.length - photos.length
+      if (repeated) toasts.add({ title: `${repeated} ${repeated === 1 ? 'foto ya estaba' : 'fotos ya estaban'} en el zine` })
       if (!photos.length) return []
       void askPersistence()
       setImporting((n) => n + photos.length)

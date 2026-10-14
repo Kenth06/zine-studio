@@ -7,7 +7,11 @@ export interface PhotoMeta {
   name: string
   w: number
   h: number
+  /** Identifies the original file (name, size, date) so the same photo isn't added twice. */
+  source?: string
 }
+
+export const sourceKey = (f: File) => `${f.name}:${f.size}:${f.lastModified}`
 
 export interface Page {
   id: string
