@@ -7,6 +7,7 @@ import { cn } from '@cloudflare/kumo/utils'
 import {
   ArrowArcLeftIcon,
   ArrowArcRightIcon,
+  DotsSixVerticalIcon,
   DotsThreeIcon,
   DownloadSimpleIcon,
   FilePlusIcon,
@@ -25,7 +26,7 @@ import { useViewport } from '../state/viewport'
 import { Bar, CtaButton, Divider, Dock, DockButton, FloatButton, IconButton } from './Chrome'
 import { PageTools } from './PageTools'
 import { useDrag, type DragPayload, type DropTarget } from './drag'
-import { PageView } from './PageView'
+import { PageView, StaticPage } from './PageView'
 import { Proof } from './Proof'
 import { Slug } from './Slug'
 
@@ -196,6 +197,7 @@ export function Editor({ project, dispatch, thumbs, importing, canUndo, canRedo,
     }
   })
   const photoGhost = (id: string) => thumbs[id] && <img src={thumbs[id]} alt="" className="size-14 rounded-md object-cover" />
+  const GHOST_H = 64
 
   /** First file goes into the slot; any others fill empty slots as usual. */
   const filesToSlot = async (pageIndex: number, slot: number, files: File[]) => {
@@ -280,16 +282,24 @@ export function Editor({ project, dispatch, thumbs, importing, canUndo, canRedo,
                         if (f) drag.start(e, { kind: 'photo', photoId: f.photoId, from: { page: n - 1, slot } }, photoGhost(f.photoId))
                       }}
                     />
+                    <PageNumber
+                      n={n}
+                      name={pageName(n - 1, total)}
+                      selected={page === n - 1}
+                      onSelect={() => setSel({ page: n - 1, slot: null })}
+                      onDragStart={(e) =>
+                        drag.start(
+                          e,
+                          { kind: 'page', index: n - 1 },
+                          <div className="overflow-hidden rounded-[2px] bg-(--paper-sheet)" style={{ width: (size.w * GHOST_H) / size.h, height: GHOST_H }}>
+                            <StaticPage page={project.pages[n - 1]} size={size} pxPerMm={GHOST_H / size.h} photos={photos} thumbs={thumbs} />
+                          </div>,
+                        )
+                      }
+                    />
                   </div>
                 ))}
               </div>
-              <figcaption className="flex gap-2">
-                {spread.map((n) => (
-                  <Slug key={n} className={n === page + 1 ? 'text-kumo-default' : ''}>
-                    {n === 1 ? 'Portada' : n === total ? 'Contraportada' : String(n).padStart(2, '0')}
-                  </Slug>
-                ))}
-              </figcaption>
               {/* Reserved under every spread so selecting another page never shifts the layout. */}
               <div ref={active ? toolsSlot : undefined} className="flex h-16 w-full max-w-full min-w-0 scroll-mb-28 items-start justify-center">
                 {active && (
@@ -483,3 +493,33 @@ export function Editor({ project, dispatch, thumbs, importing, canUndo, canRedo,
   )
 }
 
+/** The page's number under it. Click selects the page; drag it onto another page to reorder. */
+function PageNumber(p: { n: number; name: string; selected: boolean; onSelect: () => void; onDragStart: (e: React.PointerEvent) => void }) {
+  return (
+    <Tooltip
+      content={p.name + ' · arrastra para mover'}
+      side="top"
+      render={
+        <button
+          type="button"
+          aria-label={p.name + '. Arrastra para mover la página.'}
+          aria-current={p.selected ? 'page' : undefined}
+          onPointerDown={p.onDragStart}
+          onClick={p.onSelect}
+          className={cn(
+            'focus-ring group flex h-6 cursor-grab touch-none items-center rounded-full pr-2.5 pl-1.5 text-[12px] tabular-nums',
+            'transition-colors duration-(--dur-quick) hover:bg-kumo-tint hover:text-kumo-default',
+            p.selected ? 'bg-kumo-tint font-medium text-kumo-default' : 'text-kumo-subtle',
+          )}
+        >
+          <DotsSixVerticalIcon
+            size={12}
+            weight="bold"
+            className="mr-0.5 opacity-0 transition-opacity duration-(--dur-quick) group-hover:opacity-60 group-focus-visible:opacity-60"
+          />
+          {p.n}
+        </button>
+      }
+    />
+  )
+}
