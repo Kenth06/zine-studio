@@ -5,15 +5,15 @@ Cloudflare Workers; all processing in the browser.
 
 ## Commands
 
-- `npm run dev` — dev server
-- `npm test` — vitest (pure logic in `src/lib`)
-- `npm run check` — typecheck + lint + tests; run before finishing a change
-- `npm run build` — must pass
+- `pnpm dev` — dev server (pnpm only; never npm or yarn)
+- `pnpm test` — vitest (pure logic in `src/lib`)
+- `pnpm check` — typecheck + lint + tests; run before finishing a change
+- `pnpm build` — must pass
 
 ## CI and deploys
 
-Cloudflare Workers Builds is the CI (no GitHub Actions). Build command `npm run check && npm run build`;
-`main` deploys with `npx wrangler deploy`; other branches deploy a Preview with `npx wrangler preview` and the
+Cloudflare Workers Builds is the CI (no GitHub Actions). Build command `pnpm check && pnpm build`;
+`main` deploys with `pnpm wrangler deploy`; other branches deploy a Preview with `pnpm wrangler preview` and the
 Preview URL is posted on the PR. Work on a branch and open a PR to get a Preview; don't push untested work to `main`.
 The Worker name in `wrangler.jsonc` (`zine-studio`) must match the Worker in the dashboard.
 
