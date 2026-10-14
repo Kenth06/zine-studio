@@ -123,6 +123,17 @@ export function Editor({ project, dispatch, thumbs, importing, canUndo, canRedo,
     return () => window.removeEventListener('keydown', onKey)
   }, [dispatch, proof])
 
+  // Escape steps out: first out of a text field, then out of the selected photo.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape' || proof || e.defaultPrevented) return
+      if (isTyping(e.target)) (e.target as HTMLElement).blur()
+      else setSel((s) => (s.slot === null ? s : { ...s, slot: null }))
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [proof])
+
   // Keep the selected spread's tools visible above the dock.
   useEffect(() => {
     toolsSlot.current?.scrollIntoView({ block: 'nearest', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })
