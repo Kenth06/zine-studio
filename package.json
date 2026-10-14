@@ -5,9 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "check": "npm run typecheck && npm run lint && npm test",
     "build": "tsc -b && vite build",
     "preview": "npm run build && vite preview",
     "deploy": "npm run build && wrangler deploy",
+    "deploy:preview": "npm run build && wrangler preview",
     "test": "vitest run",
     "lint": "oxlint",
     "typecheck": "tsc -b",

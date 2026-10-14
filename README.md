@@ -38,8 +38,19 @@ npm run dev
 | `npm test` | Unit tests (imposition, crop, DPI) |
 | `npm run typecheck` | TypeScript |
 | `npm run lint` | oxlint |
+| `npm run check` | Typecheck, lint and tests |
 | `npm run build` | Production build to `dist/` |
 | `npm run deploy` | Build and deploy to Cloudflare Workers (static assets) |
+| `npm run deploy:preview` | Build and deploy a Preview for the current branch |
+
+## Deploys
+
+The repository is connected to Cloudflare Workers Builds:
+
+- Every push runs `npm ci`, then `npm run check && npm run build`. A failing check stops the deploy.
+- Pushes to `main` deploy to production with `npx wrangler deploy`.
+- Every other branch gets a Preview (`npx wrangler preview`) with a stable URL per branch, posted as a
+  comment on its pull request.
 
 Stack: React, Vite, Tailwind CSS v4, [Kumo](https://kumo-ui.com), Phosphor icons, [pdf-lib](https://pdf-lib.js.org),
 deployed as Cloudflare Workers static assets. The design system is documented in [DESIGN.md](DESIGN.md).
