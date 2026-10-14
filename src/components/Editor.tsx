@@ -214,10 +214,10 @@ export function Editor({ project, dispatch, thumbs, importing, canUndo, canRedo,
             </DropdownMenu.Item>
           </DropdownMenu.Content>
         </DropdownMenu>
-        <FloatButton aria-label="Deshacer" title="Deshacer (Ctrl+Z)" disabled={!canUndo} onClick={() => dispatch({ type: 'undo' })} className="disabled:opacity-40">
+        <FloatButton aria-label="Deshacer" title={canUndo ? 'Deshacer (Ctrl+Z)' : 'Nada que deshacer'} disabled={!canUndo} onClick={() => dispatch({ type: 'undo' })}>
           <ArrowArcLeftIcon size={16} />
         </FloatButton>
-        <FloatButton aria-label="Rehacer" title="Rehacer (Ctrl+Shift+Z)" disabled={!canRedo} onClick={() => dispatch({ type: 'redo' })} className="disabled:opacity-40">
+        <FloatButton aria-label="Rehacer" title={canRedo ? 'Rehacer (Ctrl+Shift+Z)' : 'Nada que rehacer'} disabled={!canRedo} onClick={() => dispatch({ type: 'redo' })}>
           <ArrowArcRightIcon size={16} />
         </FloatButton>
       </div>

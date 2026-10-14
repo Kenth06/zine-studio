@@ -17,14 +17,33 @@ function withTip(title: string | undefined, side: Side, el: ReactElement) {
 const floating = 'bg-(--float-bg) shadow-(--float-shadow) ring-1 ring-(--float-ring) backdrop-blur-md'
 const press = 'transition-[color,background-color,scale] duration-(--dur-quick) ease-out active:scale-[0.96]'
 
-export function FloatButton({ className, title, tipSide = 'bottom', ...props }: ComponentProps<'button'> & { tipSide?: Side }) {
+/**
+ * Disabled icon buttons stay hoverable (aria-disabled, not disabled) so their tooltip can say why.
+ * They keep their shape, dim the icon, and drop hover and press feedback.
+ */
+const inert = 'aria-disabled:cursor-default aria-disabled:text-kumo-inactive aria-disabled:active:scale-100'
+
+type IconProps = ComponentProps<'button'> & { tipSide?: Side }
+
+function guard({ disabled, onClick, ...rest }: IconProps) {
+  return { ...rest, 'aria-disabled': disabled || undefined, onClick: disabled ? undefined : onClick }
+}
+
+export function FloatButton({ className, title, tipSide = 'bottom', ...props }: IconProps) {
   return withTip(
     title,
     tipSide,
     <button
       type="button"
-      {...props}
-      className={cn(floating, press, 'focus-ring flex size-10 shrink-0 items-center justify-center rounded-full text-kumo-subtle hover:text-kumo-default', className)}
+      {...guard(props)}
+      className={cn(
+        floating,
+        press,
+        inert,
+        'focus-ring flex size-10 shrink-0 items-center justify-center rounded-full text-kumo-strong',
+        'hover:bg-kumo-tint data-[popup-open]:bg-kumo-tint aria-disabled:hover:bg-(--float-bg)',
+        className,
+      )}
     />,
   )
 }
@@ -144,16 +163,18 @@ export function SegmentGroup<T extends string | number | boolean>({
   )
 }
 
-export function IconButton({ className, title, tipSide = 'top', ...props }: ComponentProps<'button'> & { 'aria-label': string; tipSide?: Side }) {
+export function IconButton({ className, title, tipSide = 'top', ...props }: IconProps & { 'aria-label': string }) {
   return withTip(
     title,
     tipSide,
     <button
       type="button"
-      {...props}
+      {...guard(props)}
       className={cn(
+        press,
+        inert,
         'focus-ring flex size-8 shrink-0 items-center justify-center rounded-[10px] text-kumo-subtle',
-        'transition-colors duration-(--dur-quick) hover:bg-kumo-tint hover:text-kumo-default disabled:pointer-events-none disabled:opacity-35',
+        'hover:bg-kumo-tint hover:text-kumo-default aria-disabled:hover:bg-transparent',
         className,
       )}
     />,
