@@ -68,7 +68,7 @@ export function Dock({ className, children, label }: { className?: string; child
 /** Contextual bar for the selected thing; one at a time. */
 export function Bar({ className, children, label }: { className?: string; children: ReactNode; label: string }) {
   return (
-    <div role="toolbar" aria-label={label} className={cn(floating, 'animate-land no-scrollbar flex max-w-full items-center gap-1 overflow-x-auto rounded-[14px] p-1', className)}>
+    <div role="toolbar" aria-label={label} className={cn(floating, 'animate-fade no-scrollbar flex max-w-full items-center gap-1 overflow-x-auto rounded-[14px] p-1', className)}>
       {children}
     </div>
   )

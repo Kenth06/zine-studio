@@ -103,3 +103,8 @@ body {
     opacity: 0;
   }
 }
+
+/* Frequent surfaces (the contextual bar) only fade, and fast. */
+.animate-fade {
+  animation: fade 120ms ease-out both;
+}
