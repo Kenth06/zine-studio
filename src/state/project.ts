@@ -9,6 +9,7 @@ export type Action =
   | { type: 'load'; project: Project | null }
   | { type: 'create'; format: FormatId; paper: PaperId }
   | { type: 'addPhotos'; photos: PhotoMeta[]; fill: boolean }
+  | { type: 'autoFill'; ids: string[] }
   | { type: 'removePhoto'; id: string }
   | { type: 'assign'; page: number; slot: number; photoId: string }
   | { type: 'clearSlot'; page: number; slot: number }
@@ -38,6 +39,8 @@ function reduce(p: Project | null, a: Action): Project | null {
       const next = { ...p, photos: [...p.photos, ...a.photos] }
       return a.fill ? autoFill(next, a.photos.map((x) => x.id)) : next
     }
+    case 'autoFill':
+      return autoFill(p, a.ids)
     case 'removePhoto':
       return {
         ...p,

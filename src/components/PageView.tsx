@@ -1,6 +1,6 @@
 import { cn } from '@cloudflare/kumo/utils'
 import { ImageIcon } from '@phosphor-icons/react'
-import { useRef, type KeyboardEvent, type PointerEvent } from 'react'
+import { useRef, useState, type KeyboardEvent, type PointerEvent } from 'react'
 import { cropRect, panFill, type PhotoFill } from '../lib/crop'
 import { marginFor } from '../lib/formats'
 import type { Page, PhotoMeta } from '../lib/model'
@@ -23,6 +23,9 @@ interface Props {
   onFill: (slot: number, fill: PhotoFill) => void
   onClear: (slot: number) => void
   onText: (text: string) => void
+  /** Files dropped on a slot, or chosen for it from the picker. */
+  onFilesToSlot: (slot: number, files: File[]) => void
+  onPickForSlot: (slot: number) => void
 }
 
 export function PageView(props: Props) {
@@ -104,8 +107,14 @@ function PhotoSlot(
   const url = fill ? props.thumbs[fill.photoId] : undefined
   const active = selected && selectedSlot === index
   const drag = useRef<{ x: number; y: number; fill: PhotoFill } | null>(null)
+  const [over, setOver] = useState(false)
 
   const onPointerDown = (e: PointerEvent<HTMLDivElement>) => {
+    // A second click on an empty, already selected slot asks for a photo for it.
+    if (!fill && active) {
+      props.onPickForSlot(index)
+      return
+    }
     props.onSelect(index)
     if (!fill || !meta) return
     try {
@@ -123,7 +132,8 @@ function PhotoSlot(
   const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault()
-      props.onSelect(index)
+      if (!fill && active) props.onPickForSlot(index)
+      else props.onSelect(index)
       return
     }
     if (!fill || !meta) return
@@ -155,7 +165,7 @@ function PhotoSlot(
     <div
       role="button"
       tabIndex={0}
-      aria-label={meta ? `Hueco ${index + 1}: ${meta.name}` : `Hueco ${index + 1} vacío`}
+      aria-label={meta ? `Hueco ${index + 1}: ${meta.name}` : `Hueco ${index + 1} vacío${active ? ', Intro para elegir una foto' : ''}`}
       aria-pressed={active}
       className={cn(
         'absolute overflow-hidden outline-hidden select-none',
@@ -168,27 +178,36 @@ function PhotoSlot(
       onPointerUp={() => (drag.current = null)}
       onKeyDown={onKeyDown}
       onDragOver={(e) => {
-        if (e.dataTransfer.types.includes(PHOTO_MIME)) {
+        const types = e.dataTransfer.types
+        if (types.includes(PHOTO_MIME) || types.includes('Files')) {
           e.preventDefault()
+          e.stopPropagation()
           e.dataTransfer.dropEffect = 'copy'
+          setOver(true)
         }
       }}
+      onDragLeave={() => setOver(false)}
       onDrop={(e) => {
+        setOver(false)
         const id = e.dataTransfer.getData(PHOTO_MIME)
-        if (!id) return
+        const files = [...e.dataTransfer.files]
+        if (!id && !files.length) return
         e.preventDefault()
         e.stopPropagation()
-        props.onAssign(index, id)
+        if (id) props.onAssign(index, id)
+        else props.onFilesToSlot(index, files)
         props.onSelect(index)
       }}
     >
       {url && img ? (
         <img src={url} alt="" draggable={false} className="absolute max-w-none" style={img} />
       ) : (
-        <div className="flex h-full items-center justify-center border border-dashed border-(--paper-guide) text-(--paper-guide)">
+        <div className="flex h-full flex-col items-center justify-center gap-1 border border-dashed border-(--paper-guide) text-(--paper-guide)">
           <ImageIcon size={18} />
+          {active && <span className="text-[11px] font-medium text-(--paper-placeholder)">Elegir foto</span>}
         </div>
       )}
+      {over && <span aria-hidden className="pointer-events-none absolute inset-0 bg-kumo-contrast/10 shadow-[inset_0_0_0_2px_var(--color-kumo-contrast)]" />}
       {active && (
         // Above the photo so it always shows: ink ring with a white inner edge for dark photos.
         <span aria-hidden className="pointer-events-none absolute inset-0 shadow-[inset_0_0_0_2px_var(--color-kumo-contrast),inset_0_0_0_3px_rgb(255_255_255/0.9)]" />

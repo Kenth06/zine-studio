@@ -21,7 +21,7 @@ export default function App() {
       const photos = files.filter(isPhotoFile)
       const skipped = files.length - photos.length
       if (skipped) toasts.add({ title: `${skipped} ${skipped === 1 ? 'archivo no es' : 'archivos no son'} una foto`, variant: 'warning' })
-      if (!photos.length) return
+      if (!photos.length) return []
       void askPersistence()
       setImporting((n) => n + photos.length)
       const added: PhotoMeta[] = []
@@ -37,6 +37,7 @@ export default function App() {
         }
       }
       dispatch({ type: 'addPhotos', photos: added, fill })
+      return added
     },
     [dispatch, put, toasts],
   )

@@ -17,7 +17,7 @@ import { useEffect, useMemo, useRef, useState, type Dispatch } from 'react'
 import { cropRect, dpiLevel, effectiveDpi } from '../lib/crop'
 import { FORMATS, summary } from '../lib/formats'
 import { padToMultiple, readingSpreads } from '../lib/imposition'
-import { bleedFor, pageName, type Project } from '../lib/model'
+import { bleedFor, pageName, type PhotoMeta, type Project } from '../lib/model'
 import { slotsFor } from '../lib/templates'
 import type { Action } from '../state/project'
 import { useViewport } from '../state/viewport'
@@ -34,7 +34,7 @@ interface Props {
   importing: number
   canUndo: boolean
   canRedo: boolean
-  onFiles: (files: File[], fill: boolean) => void
+  onFiles: (files: File[], fill: boolean) => Promise<PhotoMeta[]>
   onNew: () => void
   onWipe: () => Promise<void>
 }
@@ -50,6 +50,8 @@ export function Editor({ project, dispatch, thumbs, importing, canUndo, canRedo,
   const input = useRef<HTMLInputElement>(null)
   const exportButton = useRef<HTMLButtonElement>(null)
   const toolsSlot = useRef<HTMLDivElement>(null)
+  // Slot that the file picker is choosing for, if it was opened from a slot.
+  const pickFor = useRef<{ page: number; slot: number } | null>(null)
 
   const format = FORMATS[project.format]
   const size = format.pageSize(project.paper)
@@ -151,6 +153,20 @@ export function Editor({ project, dispatch, thumbs, importing, canUndo, canRedo,
     toasts.add({ title: 'No quedan huecos vacíos', description: 'Elige un hueco para cambiar su foto.' })
   }
 
+  /** First file goes into the slot; any others fill empty slots as usual. */
+  const filesToSlot = async (pageIndex: number, slot: number, files: File[]) => {
+    const added = await onFiles(files, false)
+    if (!added.length) return
+    dispatch({ type: 'assign', page: pageIndex, slot, photoId: added[0].id })
+    if (added.length > 1) dispatch({ type: 'autoFill', ids: added.slice(1).map((m) => m.id) })
+    setSel({ page: pageIndex, slot })
+  }
+
+  const openPicker = (target: { page: number; slot: number } | null) => {
+    pickFor.current = target
+    input.current?.click()
+  }
+
   const deselect = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget) setSel((s) => ({ ...s, slot: null }))
   }
@@ -214,6 +230,8 @@ export function Editor({ project, dispatch, thumbs, importing, canUndo, canRedo,
                       undoable('Foto quitada del hueco')
                     }}
                     onText={(text) => dispatch({ type: 'setText', page: n - 1, text })}
+                    onFilesToSlot={(slot, files) => void filesToSlot(n - 1, slot, files)}
+                    onPickForSlot={(slot) => openPicker({ page: n - 1, slot })}
                   />
                 ))}
               </div>
@@ -287,7 +305,7 @@ export function Editor({ project, dispatch, thumbs, importing, canUndo, canRedo,
 
       <Dock label="Fotos">
         {project.photos.length === 0 ? (
-          <DockButton onClick={() => input.current?.click()}>
+          <DockButton onClick={() => openPicker(null)}>
             <ImagesIcon size={16} />
             Elegir fotos
           </DockButton>
@@ -340,7 +358,7 @@ export function Editor({ project, dispatch, thumbs, importing, canUndo, canRedo,
           </ul>
         )}
         <Divider />
-        <IconButton aria-label="Añadir fotos" title="Añadir fotos" onClick={() => input.current?.click()}>
+        <IconButton aria-label="Añadir fotos" title="Añadir fotos" onClick={() => openPicker(null)}>
           <PlusIcon size={16} />
         </IconButton>
         {importing > 0 && <Slug className="px-1 whitespace-nowrap">Leyendo {importing}…</Slug>}
@@ -353,7 +371,11 @@ export function Editor({ project, dispatch, thumbs, importing, canUndo, canRedo,
         multiple
         hidden
         onChange={(e) => {
-          onFiles([...(e.target.files ?? [])], true)
+          const files = [...(e.target.files ?? [])]
+          const target = pickFor.current
+          pickFor.current = null
+          if (target) void filesToSlot(target.page, target.slot, files)
+          else void onFiles(files, true)
           e.target.value = ''
         }}
       />
