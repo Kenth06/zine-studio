@@ -86,3 +86,5 @@ export function photoUsages(p: Project): Map<string, Usage[]> {
   )
   return out
 }
+
+export const pageName = (i: number, total: number) => (i === 0 ? 'Portada' : i === total - 1 ? 'Contraportada' : `Página ${i + 1}`)

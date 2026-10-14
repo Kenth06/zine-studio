@@ -22,6 +22,7 @@ interface Props {
   onAssign: (slot: number, photoId: string) => void
   onFill: (slot: number, fill: PhotoFill) => void
   onClear: (slot: number) => void
+  onText: (text: string) => void
 }
 
 export function PageView(props: Props) {
@@ -53,14 +54,16 @@ export function PageView(props: Props) {
         if (slot.kind === 'text') {
           const fs = ((textSizePt(size) * 25.4) / 72) * pxPerMm
           return (
-            <div
+            <textarea
               key={i}
-              className="absolute overflow-hidden whitespace-pre-wrap font-serif"
+              value={page.text}
+              onChange={(e) => props.onText(e.target.value)}
+              onFocus={() => props.onSelect(null)}
+              placeholder="Escribe aquí"
+              aria-label={`Texto de la página ${props.number}`}
+              className="absolute resize-none overflow-hidden bg-transparent font-serif text-(--paper-ink) outline-none placeholder:text-(--paper-guide) focus:bg-(--paper-empty)"
               style={{ ...style, fontSize: fs, lineHeight: 1.35 }}
-              onClick={() => props.onSelect(null)}
-            >
-              {page.text || (selected && <span className="opacity-35">Escribe en el panel derecho</span>)}
-            </div>
+            />
           )
         }
         const si = photoIdx++
@@ -183,6 +186,66 @@ function PhotoSlot(
           <ImageIcon size={18} />
         </div>
       )}
+    </div>
+  )
+}
+
+/** Non-interactive page, for the print proof. Same geometry as the editor. */
+export function StaticPage({
+  page,
+  size,
+  pxPerMm,
+  photos,
+  thumbs,
+  ghost = false,
+}: Pick<Props, 'page' | 'size' | 'pxPerMm' | 'photos' | 'thumbs'> & {
+  /** Show empty slots and text as grey shapes, for template thumbnails. */
+  ghost?: boolean
+}) {
+  let photoIdx = 0
+  const pct = (v: number, of: number) => `${(v / of) * 100}%`
+  return (
+    <div className="relative size-full overflow-hidden">
+      {slotsFor(page.template, size, 0).map((slot, i) => {
+        const style = { left: pct(slot.x, size.w), top: pct(slot.y, size.h), width: pct(slot.w, size.w), height: pct(slot.h, size.h) }
+        if (slot.kind === 'text') {
+          const fs = ((textSizePt(size) * 25.4) / 72) * pxPerMm
+          if (ghost)
+            return (
+              <div
+                key={i}
+                className="absolute"
+                style={{ ...style, backgroundImage: 'repeating-linear-gradient(var(--paper-guide) 0 1.5px, transparent 1.5px 5px)', opacity: 0.6 }}
+              />
+            )
+          return (
+            <div key={i} className="absolute overflow-hidden font-serif whitespace-pre-wrap" style={{ ...style, fontSize: fs, lineHeight: 1.35 }}>
+              {page.text}
+            </div>
+          )
+        }
+        const fill = page.fills[photoIdx++]
+        const meta = fill && photos.get(fill.photoId)
+        const url = fill && thumbs[fill.photoId]
+        if (!fill || !meta || !url) return ghost ? <div key={i} className="absolute bg-(--paper-guide) opacity-40" style={style} /> : null
+        const c = cropRect(meta.w, meta.h, slot.w / slot.h, fill)
+        return (
+          <div key={i} className="absolute overflow-hidden" style={style}>
+            <img
+              src={url}
+              alt=""
+              draggable={false}
+              className="absolute max-w-none"
+              style={{
+                width: `${(meta.w / c.w) * 100}%`,
+                height: `${(meta.h / c.h) * 100}%`,
+                left: `${(-c.x / c.w) * 100}%`,
+                top: `${(-c.y / c.h) * 100}%`,
+              }}
+            />
+          </div>
+        )
+      })}
     </div>
   )
 }

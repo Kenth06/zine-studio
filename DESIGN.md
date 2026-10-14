@@ -48,6 +48,7 @@ Warm near-black, never blue: canvas `#151411`, base `#1c1b17`, recessed `#100f0d
 | `--paper-guide` | `rgb(37 36 31 / .28)`, 1 px dashed: safe zone, empty slots |
 | `--paper-shadow` | `0 1px 2px rgb(45 41 31 / .08), 0 8px 24px rgb(45 41 31 / .1)` |
 | `--paper-radius` | `2px` |
+| `--mat-dot` | Cutting-mat dots behind the work |
 
 ### States
 
@@ -58,7 +59,7 @@ Warm near-black, never blue: canvas `#151411`, base `#1c1b17`, recessed `#100f0d
 ## Type
 
 - **UI:** Inter Variable. Dense, tool-sized: 15 px wordmark, 14 px body (`text-sm`), 12–13 px secondary.
-- **Slug:** the signature label. 10.5 px, weight 500, uppercase, `tracking 0.08em`, subtle ink, tabular numbers.
+- **Slug:** the signature label. Mono, 10.5 px, uppercase, `tracking 0.06em`, subtle ink, tabular numbers.
   Used for metadata a printer would write on a proof: page counts, sizes, «PORTADA», progress. Component: `<Slug>`.
 - **Wordmark:** lowercase product name, semibold, `tracking-tight`. No logo lockups in the UI.
 - **Content:** the zine's own type is separate from the UI (currently a serif). It is embedded in the PDF.
@@ -91,26 +92,39 @@ Hover and focus changes use `quick`. Press feedback is `scale(0.97)`.
 
 ## Layout
 
-- **Tools:** one centred column, `max-w-3xl`, `px-4 sm:px-6`. The start screen, settings and dialogs live here.
-- **Editors:** sticky 48 px header, tray on the left, work on a recessed surface in the centre, inspector on the right.
-  Below `lg` everything stacks and the page scrolls: work first, inspector, then tray.
-- Cards: Kumo `LayerCard` (`Secondary` header + `Primary` body). Empty states: Kumo `Empty` with one instruction.
+The work is the interface. There are no panels, sidebars or header bars.
 
-## Components
+- **Work surface:** full screen on the cutting mat (`.mat`: canvas colour with a dot every 16 px). The user's pages,
+  or the printed sheet, sit centred at true proportions.
+- **Corners:** 40 px round buttons (`FloatButton`). Top-left: menu, with the wordmark and a slug beside it.
+  Top-right: the one call-to-action pill (`CtaButton`).
+- **Dock:** one floating bar at the bottom centre (`Dock`, 18 px radius, `--float-bg` + `--float-shadow`). It holds the
+  content the user works with (photo thumbnails) and at most one or two segmented choices.
+- **Contextual bar:** tools for the selected thing float right under it (`Bar`), never in a side panel.
+- **Overlays** take the whole screen on the same mat (the print proof), with a round close button top-left.
+- **Plain screens** (settings, about) use one centred column, `max-w-2xl`, `px-4 sm:px-6`.
+
+## Controls
 
 | Need | Use |
 | --- | --- |
-| Primary action | `Button variant="primary"`, one per screen |
-| Icon-only action | `Button variant="ghost" shape="square"` with `aria-label` |
-| Choice between 2–3 values | `Tabs` segmented (`size="sm"` in headers) |
-| Choice with explanation | Option tiles (`role="radio"`) with a schematic diagram and one line |
+| The screen's main action | `CtaButton` — vermilion pill, `--cta-shadow`. One per screen |
+| Corner action | `FloatButton` with `aria-label` |
+| 2–4 options | `Segment`s in a row; the selected one is solid ink (`bg-kumo-contrast`) |
+| Choosing a look | Previews of the user's own content in each option (templates show their page with their photos) |
+| A value | `FieldSlider` — label inside, value in mono on the right, ticks behind |
+| Icon action in a bar | `IconButton` (32 px) |
+| Metadata, counts, captions | `<Slug>` — mono, uppercase, 10.5 px |
 | Non-blocking feedback | Toast (`useKumoToastManager`) |
-| Blocking problem | `Banner variant="alert"` with a fixing action |
-| Metadata | `<Slug>` |
-| Icons | Phosphor, 16–20 px, `text-kumo-subtle` |
+| Destructive confirmation | Kumo `Dialog size="sm"` |
+| Menus | Kumo `DropdownMenu` from a `FloatButton` |
+| Icons | Phosphor, 16–18 px |
 
-Diagrams (how a sheet folds, what a template looks like) are drawn in `currentColor` SVG and explain something.
-They are the only illustrations.
+Kumo provides the accessible primitives (dialog, menu, toast) and the semantic tokens. Do not use `LayerCard`, `Tabs`
+or default `Button` styling for app chrome: they read as an admin console.
+
+Diagrams that explain the physical result — the sheet with its folds, the cut, the page order — are drawn at scale and
+are the only illustrations.
 
 ## Writing
 
@@ -124,6 +138,7 @@ They are the only illustrations.
 - Gradients, glassmorphism, neon glows, purple-on-black.
 - A second accent colour, or accent on anything that isn't the primary action.
 - Feature grids with coloured icon tiles; stock illustrations; emoji in headings.
+- Panels of rounded cards around the work. If it looks like an admin dashboard, start again.
 - Onboarding modals, tours, «Get started» heroes.
 - Marketing adjectives (increíble, potente, mágico).
 - `dark:` Tailwind variants. Mode is `data-mode` on `<html>`; tokens handle it.

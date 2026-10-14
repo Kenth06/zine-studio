@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { MINI_LAYOUT, padToMultiple, paddedOrder, readingSpreads, saddleStitch } from './imposition'
+import { MINI_LAYOUT, padToMultiple, paddedOrder, readingSpreads, saddleStitch, sheetSides } from './imposition'
 import { cropRect, effectiveDpi, rasterSize } from './crop'
 import { slotsFor } from './templates'
 
@@ -84,5 +84,23 @@ describe('crop and dpi', () => {
   it('extends bleed slots past the trim box', () => {
     const [s] = slotsFor('bleed', { w: 148.5, h: 210 }, 3)
     expect(s).toMatchObject({ x: -3, y: -3, w: 154.5, h: 216 })
+  })
+})
+
+describe('sheet sides', () => {
+  it('puts the mini-zine cover bottom-right and page 5 top-left, rotated', () => {
+    const [side] = sheetSides('mini', { w: 279.4, h: 215.9 }, 8)
+    const cover = side.cells.find((c) => c.number === 1)!
+    const five = side.cells.find((c) => c.number === 5)!
+    expect(cover).toMatchObject({ page: 0, x: 279.4 * 0.75, y: 215.9 / 2, rotated: false })
+    expect(five).toMatchObject({ page: 4, x: 0, y: 0, rotated: true })
+  })
+
+  it('pads booklets with blanks before the back cover', () => {
+    const sides = sheetSides('booklet', { w: 279.4, h: 215.9 }, 10)
+    expect(sides).toHaveLength(6)
+    expect(sides[0].cells.map((c) => c.page)).toEqual([9, 0])
+    const blanks = sides.flatMap((s) => s.cells).filter((c) => c.page === null)
+    expect(blanks.map((c) => c.number).sort()).toEqual([10, 11])
   })
 })

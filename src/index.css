@@ -7,6 +7,7 @@
 @theme {
   --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
   --font-serif: "Times New Roman", Times, serif;
+  --font-mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
 }
 
 html,
@@ -36,4 +37,34 @@ body {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+@keyframes land {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.985);
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 16px);
+  }
+}
+
+.animate-land {
+  animation: land var(--dur-enter) var(--ease-spring) both;
+}
+
+.animate-rise {
+  animation: rise var(--dur-enter) var(--ease-out) both;
+}
+
+/* The work surface: a cutting mat. */
+.mat {
+  background-color: var(--color-kumo-canvas);
+  background-image: radial-gradient(var(--mat-dot) 1px, transparent 1.2px);
+  background-size: 16px 16px;
+  background-attachment: local;
 }

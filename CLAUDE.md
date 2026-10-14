@@ -33,8 +33,9 @@ The Worker name in `wrangler.jsonc` (`zine-studio`) must match the Worker in the
 ## UI
 
 Follow [DESIGN.md](DESIGN.md) — use the `taller-design` skill when touching UI. In short:
-Kumo components and semantic tokens only (`bg-kumo-*`, `text-kumo-*`), no raw Tailwind colours, no `dark:` variants,
-one primary (accent) button per screen, `<Slug>` for metadata, Phosphor icons, every icon-only button has an `aria-label`,
+the work fills the screen on the cutting mat; chrome floats (corner buttons, bottom dock, contextual bars from
+`src/components/Chrome.tsx`), never panels of cards. Semantic tokens only (`bg-kumo-*`, `text-kumo-*`, `--paper-*`),
+no raw Tailwind colours, no `dark:` variants, one vermilion call-to-action per screen, `<Slug>` for metadata, Phosphor icons, every icon-only button has an `aria-label`,
 every drag interaction has a keyboard alternative. Import Kumo per component (`@cloudflare/kumo/components/button`).
 UI copy is Spanish.
 

@@ -18,6 +18,7 @@
   --color-kumo-fill: #e3dfd5;
   --color-kumo-fill-hover: #ece9e2;
   --color-kumo-interact: #d3cec2;
+  --color-kumo-contrast: #25241f;
 
   /* Lines */
   --color-kumo-hairline: #e2ded4;
@@ -53,8 +54,17 @@
   --radius-card: 12px;
   --radius-dock: 18px;
 
-  /* Floating surfaces (popovers, docks) */
-  --float-shadow: 0 2px 8px rgb(45 41 31 / 0.05), 0 12px 32px rgb(45 41 31 / 0.1);
+  /* Floating surfaces: corner buttons, docks, contextual toolbars */
+  --float-bg: rgb(251 250 247 / 0.86);
+  --float-ring: rgb(37 36 31 / 0.08);
+  --float-shadow: 0 2px 8px rgb(45 41 31 / 0.05), 0 14px 40px rgb(45 41 31 / 0.12);
+  --cta-shadow: 0 2px 8px -2px rgb(45 41 31 / 0.25), 0 4px 16px -4px rgb(194 64 31 / 0.35), inset 0 1px 0 rgb(255 255 255 / 0.18);
+
+  /* Cutting-mat dots behind the work, one every 16 px */
+  --mat-dot: rgb(37 36 31 / 0.13);
+
+  /* Print marks drawn around sheets in the proof */
+  --mark: rgb(37 36 31 / 0.55);
 
   /* Motion */
   --dur-micro: 80ms;
@@ -79,6 +89,7 @@
   --color-kumo-fill: #2c2a24;
   --color-kumo-fill-hover: #33312a;
   --color-kumo-interact: #3d3b33;
+  --color-kumo-contrast: #ecebe5;
 
   --color-kumo-hairline: #2a2923;
   --color-kumo-line: #3a3831;
@@ -95,5 +106,10 @@
   --color-kumo-brand-hover: #e2683f;
 
   --paper-shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 24px rgb(0 0 0 / 0.35);
-  --float-shadow: 0 2px 8px rgb(0 0 0 / 0.3), 0 12px 32px rgb(0 0 0 / 0.35);
+  --float-bg: rgb(32 31 27 / 0.86);
+  --float-ring: rgb(255 255 255 / 0.07);
+  --float-shadow: 0 2px 8px rgb(0 0 0 / 0.3), 0 14px 40px rgb(0 0 0 / 0.4);
+  --cta-shadow: 0 2px 8px -2px rgb(0 0 0 / 0.5), inset 0 1px 0 rgb(255 255 255 / 0.15);
+  --mark: rgb(236 235 229 / 0.5);
+  --mat-dot: rgb(236 235 229 / 0.09);
 }

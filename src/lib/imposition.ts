@@ -75,3 +75,66 @@ export function readingSpreads(n: number): number[][] {
   for (let p = 2; p <= n; p += 2) out.push(p === n ? [p] : [p, p + 1])
   return out
 }
+
+export interface SheetCell {
+  /** Index into the project's pages, or null for a padding blank. */
+  page: number | null
+  /** 1-based position in the printed order, for labels. */
+  number: number
+  /** mm from the sheet's top-left. */
+  x: number
+  y: number
+  w: number
+  h: number
+  rotated: boolean
+}
+
+export interface PrintSide {
+  sheet: number
+  side: 'front' | 'back' | 'single'
+  cells: SheetCell[]
+}
+
+/**
+ * Every printed side, with each page's position on it. One source for the
+ * on-screen proof and the PDF, so what you see is what prints.
+ */
+export function sheetSides(
+  format: 'mini' | 'booklet' | 'loose',
+  sheet: { w: number; h: number },
+  count: number,
+): PrintSide[] {
+  if (format === 'mini') {
+    const w = sheet.w / 4
+    const h = sheet.h / 2
+    return [
+      {
+        sheet: 0,
+        side: 'single',
+        cells: MINI_LAYOUT.map((c) => ({
+          page: c.page <= count ? c.page - 1 : null,
+          number: c.page,
+          x: c.col * w,
+          y: c.row * h,
+          w,
+          h,
+          rotated: c.rotated,
+        })),
+      },
+    ]
+  }
+  if (format === 'booklet') {
+    const order = paddedOrder(count, 4)
+    const w = sheet.w / 2
+    const cell = (n: number, x: number): SheetCell => ({ page: order[n - 1], number: n, x, y: 0, w, h: sheet.h, rotated: false })
+    return saddleStitch(order.length).flatMap((s, i) => [
+      { sheet: i, side: 'front' as const, cells: [cell(s.front.left, 0), cell(s.front.right, w)] },
+      { sheet: i, side: 'back' as const, cells: [cell(s.back.left, 0), cell(s.back.right, w)] },
+    ])
+  }
+  return Array.from({ length: count }, (_, i) => ({
+    sheet: i,
+    side: 'single' as const,
+    cells: [{ page: i, number: i + 1, x: 0, y: 0, w: sheet.w, h: sheet.h, rotated: false }],
+  }))
+}

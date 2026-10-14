@@ -1,20 +1,21 @@
-import { Banner } from '@cloudflare/kumo/components/banner'
 import { Button } from '@cloudflare/kumo/components/button'
 import { Dialog } from '@cloudflare/kumo/components/dialog'
-import { Tabs } from '@cloudflare/kumo/components/tabs'
+import { DropdownMenu } from '@cloudflare/kumo/components/dropdown'
 import { useKumoToastManager } from '@cloudflare/kumo/components/toast'
-import { DownloadSimpleIcon, WarningIcon } from '@phosphor-icons/react'
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type Dispatch } from 'react'
+import { cn } from '@cloudflare/kumo/utils'
+import { DotsThreeIcon, DownloadSimpleIcon, FilePlusIcon, ImagesIcon, PlusIcon, TrashIcon } from '@phosphor-icons/react'
+import { useEffect, useMemo, useRef, useState, type Dispatch } from 'react'
 import { cropRect, dpiLevel, effectiveDpi } from '../lib/crop'
-import { FORMATS, summary, type PaperId } from '../lib/formats'
+import { FORMATS, PAPER, summary, type PaperId } from '../lib/formats'
 import { padToMultiple, readingSpreads } from '../lib/imposition'
-import { bleedFor, photoUsages, type Project } from '../lib/model'
+import { bleedFor, type Project } from '../lib/model'
 import { slotsFor } from '../lib/templates'
 import type { Action } from '../state/project'
-import { ExportDialog } from './ExportDialog'
-import { Inspector } from './Inspector'
-import { PageView } from './PageView'
-import { PhotoTray } from './PhotoTray'
+import { useViewport } from '../state/viewport'
+import { Bar, CtaButton, Divider, Dock, FloatButton, IconButton, Segment } from './Chrome'
+import { PageTools } from './PageTools'
+import { PageView, PHOTO_MIME } from './PageView'
+import { Proof } from './Proof'
 import { Slug } from './Slug'
 
 interface Props {
@@ -30,11 +31,11 @@ interface Props {
 
 export function Editor({ project, dispatch, thumbs, importing, onFiles, onRemovePhoto, onNew, onWipe }: Props) {
   const toasts = useKumoToastManager()
+  const vp = useViewport()
   const [sel, setSel] = useState<{ page: number; slot: number | null }>({ page: 0, slot: null })
-  const [exporting, setExporting] = useState(false)
+  const [proof, setProof] = useState(false)
   const [confirmWipe, setConfirmWipe] = useState(false)
-  const [canvasW, setCanvasW] = useState(800)
-  const canvasRef = useRef<HTMLDivElement>(null)
+  const input = useRef<HTMLInputElement>(null)
 
   const format = FORMATS[project.format]
   const size = format.pageSize(project.paper)
@@ -42,35 +43,30 @@ export function Editor({ project, dispatch, thumbs, importing, onFiles, onRemove
   const total = project.pages.length
   const page = Math.min(sel.page, total - 1)
   const photos = useMemo(() => new Map(project.photos.map((p) => [p.id, p])), [project.photos])
+  const pxPerMm = Math.min(Math.min(vp.h * 0.6, 520) / size.h, (vp.w - 40) / (2 * size.w))
 
-  useLayoutEffect(() => {
-    const el = canvasRef.current
-    if (!el) return
-    const ro = new ResizeObserver(([e]) => setCanvasW(e.contentRect.width))
-    ro.observe(el)
-    return () => ro.disconnect()
-  }, [])
-  const pxPerMm = Math.min(380 / size.h, (canvasW - 48) / (2 * size.w + 4))
-
-  // Effective DPI per used photo, for the tray badges and the export summary.
-  const { worstDpi, lowDpi, emptySlots } = useMemo(() => {
+  // Effective DPI of every placed photo: drives warnings in the dock and the proof.
+  const { dpiBySlot, worstDpi, lowDpi, emptySlots } = useMemo(() => {
+    const bySlot = new Map<string, number>()
     const worst = new Map<string, number>()
     let empty = 0
-    for (const pg of project.pages) {
-      const slots = slotsFor(pg.template, size, bleed).filter((s) => s.kind === 'photo')
-      slots.forEach((s, i) => {
-        const f = pg.fills[i]
-        const meta = f && photos.get(f.photoId)
-        if (!f || !meta) return void empty++
-        const dpi = effectiveDpi(cropRect(meta.w, meta.h, s.w / s.h, f), s.w)
-        worst.set(f.photoId, Math.min(worst.get(f.photoId) ?? Infinity, dpi))
-      })
-    }
+    project.pages.forEach((pg, pi) => {
+      slotsFor(pg.template, size, bleed)
+        .filter((s) => s.kind === 'photo')
+        .forEach((s, si) => {
+          const f = pg.fills[si]
+          const meta = f && photos.get(f.photoId)
+          if (!f || !meta) return void empty++
+          const dpi = effectiveDpi(cropRect(meta.w, meta.h, s.w / s.h, f), s.w)
+          bySlot.set(`${pi}:${si}`, dpi)
+          worst.set(f.photoId, Math.min(worst.get(f.photoId) ?? Infinity, dpi))
+        })
+    })
     const low = [...worst.values()].filter((d) => dpiLevel(d) !== 'ok').length
-    return { worstDpi: worst, lowDpi: low, emptySlots: empty }
+    return { dpiBySlot: bySlot, worstDpi: worst, lowDpi: low, emptySlots: empty }
   }, [project.pages, photos, size, bleed])
 
-  // Drop files anywhere, or paste them.
+  // Drop photos anywhere, or paste them.
   useEffect(() => {
     const onPaste = (e: ClipboardEvent) => {
       const files = [...(e.clipboardData?.files ?? [])]
@@ -94,15 +90,16 @@ export function Editor({ project, dispatch, thumbs, importing, onFiles, onRemove
     }
   }, [onFiles])
 
-  const usages = useMemo(() => photoUsages(project), [project])
   const missing = project.format === 'booklet' ? padToMultiple(total, 4) - total : 0
+  const current = project.pages[page]
+  const fill = sel.slot !== null ? current.fills[sel.slot] : null
+  const fillMeta = fill ? photos.get(fill.photoId) : undefined
 
   const pick = (photoId: string) => {
-    if (sel.slot !== null && sel.slot < project.pages[page].fills.length) {
+    if (sel.slot !== null && sel.slot < current.fills.length) {
       dispatch({ type: 'assign', page, slot: sel.slot, photoId })
       return
     }
-    // No slot chosen: use the first empty one from the selected page onwards.
     for (let k = 0; k < total; k++) {
       const pi = (page + k) % total
       const si = project.pages[pi].fills.findIndex((f) => !f)
@@ -112,151 +109,224 @@ export function Editor({ project, dispatch, thumbs, importing, onFiles, onRemove
         return
       }
     }
-    toasts.add({ title: 'No quedan huecos vacíos', description: 'Elige un hueco para reemplazar su foto.' })
+    toasts.add({ title: 'No quedan huecos vacíos', description: 'Elige un hueco para cambiar su foto.' })
+  }
+
+  const deselect = (e: React.MouseEvent) => {
+    if (e.target === e.currentTarget) setSel((s) => ({ ...s, slot: null }))
   }
 
   return (
-    <div className="flex min-h-full flex-col lg:h-full">
-      <header className="sticky top-0 z-20 flex h-12 shrink-0 items-center justify-between gap-4 border-b border-kumo-hairline bg-kumo-base px-4">
-        <div className="flex min-w-0 items-baseline gap-3">
-          <button onClick={onNew} className="text-[15px] font-semibold tracking-tight text-kumo-default">
-            zine studio
-          </button>
-          <Slug className="hidden truncate sm:inline">{summary(project.format, project.paper, total)}</Slug>
-        </div>
-        <div className="flex items-center gap-2">
-          <Tabs
-            size="sm"
-            value={project.paper}
-            onValueChange={(v) => dispatch({ type: 'setPaper', paper: v as PaperId })}
-            tabs={[
-              { value: 'letter', label: 'Carta' },
-              { value: 'a4', label: 'A4' },
-            ]}
-          />
-          <Button variant="primary" size="sm" icon={DownloadSimpleIcon} onClick={() => setExporting(true)}>
-            Exportar
-          </Button>
-        </div>
-      </header>
-
-      <div className="grid flex-1 grid-cols-1 lg:min-h-0 lg:grid-cols-[248px_minmax(0,1fr)_288px]">
-        <aside className="order-3 flex flex-col gap-3 border-kumo-hairline p-3 lg:min-h-0 lg:order-1 lg:border-r">
-          <PhotoTray
-            photos={project.photos}
-            thumbs={thumbs}
-            worstDpi={worstDpi}
-            importing={importing}
-            canAssign={sel.slot !== null}
-            onFiles={(f) => onFiles(f, true)}
-            onPick={pick}
-            onRemove={(id) => {
-              const n = usages.get(id)?.length ?? 0
-              onRemovePhoto(id)
-              if (n) toasts.add({ title: `Foto quitada de ${n} ${n === 1 ? 'hueco' : 'huecos'}` })
-            }}
-          />
-          <div className="flex flex-col gap-1 px-1">
-            <p className="text-xs leading-snug text-kumo-subtle">Nada se sube. Las fotos se quedan en este navegador.</p>
-            <button onClick={() => setConfirmWipe(true)} className="self-start text-xs text-kumo-subtle underline decoration-kumo-interact underline-offset-2 hover:text-kumo-danger">
+    <div className="mat min-h-full" onClick={deselect}>
+      <div className="fixed top-4 left-4 z-30 flex items-center gap-3 sm:left-5">
+        <DropdownMenu>
+          <DropdownMenu.Trigger render={<FloatButton aria-label="Menú" />}>
+            <DotsThreeIcon size={18} weight="bold" />
+          </DropdownMenu.Trigger>
+          <DropdownMenu.Content align="start" sideOffset={8}>
+            <DropdownMenu.Item icon={FilePlusIcon} onClick={onNew}>
+              Nuevo zine
+            </DropdownMenu.Item>
+            <DropdownMenu.Item icon={TrashIcon} variant="danger" onClick={() => setConfirmWipe(true)}>
               Borrar todo de este navegador
-            </button>
-          </div>
-        </aside>
-
-        <main ref={canvasRef} className="order-1 bg-kumo-recessed lg:min-h-0 lg:overflow-y-auto lg:order-2" onClick={(e) => e.target === e.currentTarget && setSel((s) => ({ ...s, slot: null }))}>
-          {missing > 0 && (
-            <div className="z-10 p-3 lg:sticky lg:top-0">
-              <Banner
-                variant="alert"
-                icon={<WarningIcon weight="fill" />}
-                title={`Faltan ${missing} ${missing === 1 ? 'página' : 'páginas'} para completar el pliego`}
-                description="Un cuadernillo necesita múltiplos de 4. Si no las añades, saldrán en blanco antes de la contraportada."
-                action={
-                  <Button size="sm" variant="secondary" onClick={() => dispatch({ type: 'addPage', after: total - 2, count: missing })}>
-                    Añadir {missing}
-                  </Button>
-                }
-              />
-            </div>
-          )}
-          <div className="flex flex-col items-center gap-10 px-6 py-10">
-            {readingSpreads(total).map((spread) => (
-              <figure key={spread.join('-')} className="flex flex-col items-center gap-3">
-                <div className={spread.length === 1 && spread[0] === 1 ? 'flex justify-end' : 'flex'} style={{ gap: 2 }}>
-                  {spread.length === 1 && spread[0] === 1 && <div style={{ width: size.w * pxPerMm }} aria-hidden />}
-                  {spread.map((n) => (
-                    <PageView
-                      key={project.pages[n - 1].id}
-                      page={project.pages[n - 1]}
-                      number={n}
-                      size={size}
-                      bleed={bleed}
-                      pxPerMm={pxPerMm}
-                      photos={photos}
-                      thumbs={thumbs}
-                      selected={page === n - 1}
-                      selectedSlot={page === n - 1 ? sel.slot : null}
-                      onSelect={(slot) => setSel({ page: n - 1, slot })}
-                      onAssign={(slot, photoId) => dispatch({ type: 'assign', page: n - 1, slot, photoId })}
-                      onFill={(slot, fill) => dispatch({ type: 'updateFill', page: n - 1, slot, fill })}
-                      onClear={(slot) => dispatch({ type: 'clearSlot', page: n - 1, slot })}
-                    />
-                  ))}
-                  {spread.length === 1 && spread[0] !== 1 && spread[0] % 2 === 0 && <div style={{ width: size.w * pxPerMm }} aria-hidden />}
-                </div>
-                <figcaption>
-                  <Slug>{spread.map((n) => (n === 1 ? 'Portada' : n === total ? 'Contraportada' : n)).join(' · ')}</Slug>
-                </figcaption>
-              </figure>
-            ))}
-          </div>
-        </main>
-
-        <aside className="order-2 border-kumo-hairline p-3 lg:min-h-0 lg:overflow-y-auto lg:order-3 lg:border-l">
-          <Inspector
-            page={project.pages[page]}
-            index={page}
-            total={total}
-            size={size}
-            bleed={bleed}
-            fixedPages={!!format.fixedPages}
-            slot={sel.slot}
-            photos={photos}
-            thumbs={thumbs}
-            onTemplate={(template) => {
-              dispatch({ type: 'setTemplate', page, template })
-              setSel({ page, slot: null })
-            }}
-            onMove={(to) => {
-              dispatch({ type: 'movePage', from: page, to })
-              setSel({ page: to, slot: null })
-            }}
-            onAdd={() => {
-              dispatch({ type: 'addPage', after: page })
-              setSel({ page: page + 1, slot: null })
-            }}
-            onRemove={() => {
-              dispatch({ type: 'removePage', page })
-              setSel({ page: Math.max(0, page - 1), slot: null })
-            }}
-            onFill={(slot, fill) => dispatch({ type: 'updateFill', page, slot, fill })}
-            onClear={(slot) => dispatch({ type: 'clearSlot', page, slot })}
-            onText={(text) => dispatch({ type: 'setText', page, text })}
-          />
-        </aside>
+            </DropdownMenu.Item>
+          </DropdownMenu.Content>
+        </DropdownMenu>
+        <div className="hidden flex-col sm:flex">
+          <span className="text-[13px] leading-tight font-semibold tracking-tight text-kumo-default">zine studio</span>
+          <Slug className="leading-tight">{summary(project.format, project.paper, total)}</Slug>
+        </div>
       </div>
 
-      <ExportDialog
-        project={project}
-        open={exporting}
-        onOpenChange={setExporting}
-        lowDpi={lowDpi}
-        emptySlots={emptySlots}
-        onPrint={(b, c) => dispatch({ type: 'setPrint', bleed: b, cropMarks: c })}
-        onError={(m) => toasts.add({ title: 'No se pudo exportar', description: m, variant: 'error' })}
-        onDone={(name) => toasts.add({ title: 'PDF listo', description: name, variant: 'success' })}
+      <div className="fixed top-4 right-4 z-30 sm:right-5">
+        <CtaButton onClick={() => setProof(true)}>
+          <DownloadSimpleIcon size={16} weight="bold" />
+          Exportar
+        </CtaButton>
+      </div>
+
+      <main className="flex flex-col items-center gap-12 px-4 pt-24 pb-44" onClick={deselect}>
+        {readingSpreads(total).map((spread) => {
+          const active = spread.includes(page + 1)
+          const lone = spread.length === 1
+          return (
+            <figure key={spread.join('-')} className="flex flex-col items-center gap-3" onClick={deselect}>
+              <div
+                className={cn('flex gap-0.5', lone && (spread[0] === 1 ? 'justify-end' : 'justify-start'))}
+                style={{ width: 2 * size.w * pxPerMm + 2 }}
+              >
+                {spread.map((n) => (
+                  <PageView
+                    key={project.pages[n - 1].id}
+                    page={project.pages[n - 1]}
+                    number={n}
+                    size={size}
+                    bleed={bleed}
+                    pxPerMm={pxPerMm}
+                    photos={photos}
+                    thumbs={thumbs}
+                    selected={page === n - 1}
+                    selectedSlot={page === n - 1 ? sel.slot : null}
+                    onSelect={(slot) => setSel({ page: n - 1, slot })}
+                    onAssign={(slot, photoId) => dispatch({ type: 'assign', page: n - 1, slot, photoId })}
+                    onFill={(slot, f) => dispatch({ type: 'updateFill', page: n - 1, slot, fill: f })}
+                    onClear={(slot) => dispatch({ type: 'clearSlot', page: n - 1, slot })}
+                    onText={(text) => dispatch({ type: 'setText', page: n - 1, text })}
+                  />
+                ))}
+              </div>
+              <figcaption>
+                <Slug>{spread.map((n) => (n === 1 ? 'Portada' : n === total ? 'Contraportada' : String(n).padStart(2, '0'))).join(' · ')}</Slug>
+              </figcaption>
+              {active && (
+                <PageTools
+                  page={current}
+                  index={page}
+                  total={total}
+                  size={size}
+                  fixedPages={!!format.fixedPages}
+                  photos={photos}
+                  thumbs={thumbs}
+                  photo={
+                    fill && fillMeta && sel.slot !== null
+                      ? { meta: fillMeta, fill, slot: sel.slot, dpi: dpiBySlot.get(`${page}:${sel.slot}`) ?? 0 }
+                      : undefined
+                  }
+                  onTemplate={(template) => {
+                    dispatch({ type: 'setTemplate', page, template })
+                    setSel({ page, slot: null })
+                  }}
+                  onMove={(to) => {
+                    dispatch({ type: 'movePage', from: page, to })
+                    setSel({ page: to, slot: null })
+                  }}
+                  onAdd={() => {
+                    dispatch({ type: 'addPage', after: page })
+                    setSel({ page: page + 1, slot: null })
+                  }}
+                  onRemove={() => {
+                    dispatch({ type: 'removePage', page })
+                    setSel({ page: Math.max(0, page - 1), slot: null })
+                  }}
+                  onFill={(slot, f) => dispatch({ type: 'updateFill', page, slot, fill: f })}
+                  onClear={(slot) => dispatch({ type: 'clearSlot', page, slot })}
+                />
+              )}
+            </figure>
+          )
+        })}
+      </main>
+
+      {missing > 0 && (
+        <div className="fixed bottom-[84px] left-1/2 z-30 -translate-x-1/2">
+          <Bar label="Pliego incompleto" className="pl-3">
+            <span className="text-[12px] whitespace-nowrap text-kumo-default">
+              Faltan {missing} {missing === 1 ? 'página' : 'páginas'} para el pliego
+            </span>
+            <Segment
+              role="button"
+              aria-checked={undefined}
+              onClick={() => dispatch({ type: 'addPage', after: total - 2, count: missing })}
+              className="h-7 text-kumo-default"
+            >
+              Añadir {missing}
+            </Segment>
+          </Bar>
+        </div>
+      )}
+
+      <Slug className="fixed bottom-6 left-5 hidden xl:block">Nada se sube · todo pasa en este navegador</Slug>
+
+      <Dock label="Fotos">
+        {project.photos.length === 0 ? (
+          <Segment role="button" aria-checked={undefined} onClick={() => input.current?.click()} className="text-kumo-default">
+            <ImagesIcon size={16} />
+            Elegir fotos
+            <span className="hidden text-kumo-subtle sm:inline">· o suéltalas en cualquier parte</span>
+          </Segment>
+        ) : (
+          <ul className="flex max-w-[min(60vw,640px)] gap-1.5 overflow-x-auto p-0.5" aria-label="Fotos">
+            {project.photos.map((photo) => {
+              const dpi = worstDpi.get(photo.id)
+              const level = dpi === undefined ? null : dpiLevel(dpi)
+              const placed = fill?.photoId === photo.id
+              return (
+                <li key={photo.id} className="relative shrink-0">
+                  <button
+                    type="button"
+                    draggable
+                    onDragStart={(e) => {
+                      e.dataTransfer.setData(PHOTO_MIME, photo.id)
+                      e.dataTransfer.effectAllowed = 'copy'
+                    }}
+                    onClick={() => pick(photo.id)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Delete' || e.key === 'Backspace') onRemovePhoto(photo.id)
+                    }}
+                    aria-label={`${photo.name}${dpi === undefined ? ', sin usar' : ''}`}
+                    title={`${photo.name}${dpi === undefined ? ' · sin usar' : ` · ${dpi} ppp`}`}
+                    className={cn(
+                      'block size-10 overflow-hidden rounded-[8px] bg-kumo-recessed outline-none',
+                      'transition-[box-shadow,opacity,transform] duration-(--dur-quick) ease-(--ease-out) focus-visible:ring-2 focus-visible:ring-kumo-focus active:scale-95',
+                      placed ? 'ring-2 ring-kumo-contrast ring-offset-1 ring-offset-(--float-bg)' : 'ring-1 ring-(--float-ring)',
+                      dpi === undefined && 'opacity-55 hover:opacity-100',
+                    )}
+                  >
+                    {thumbs[photo.id] && <img src={thumbs[photo.id]} alt="" draggable={false} className="size-full object-cover" />}
+                  </button>
+                  {level && level !== 'ok' && (
+                    <span
+                      aria-hidden
+                      className={cn(
+                        'absolute -top-0.5 -right-0.5 size-2 rounded-full ring-2 ring-(--float-bg)',
+                        level === 'bad' ? 'bg-kumo-danger' : 'bg-kumo-warning',
+                      )}
+                    />
+                  )}
+                </li>
+              )
+            })}
+          </ul>
+        )}
+        <IconButton aria-label="Añadir fotos" title="Añadir fotos" onClick={() => input.current?.click()}>
+          <PlusIcon size={16} />
+        </IconButton>
+        {importing > 0 && <Slug className="px-1 whitespace-nowrap">Leyendo {importing}…</Slug>}
+        <Divider />
+        <div role="radiogroup" aria-label="Papel" className="flex">
+          {(['letter', 'a4'] as PaperId[]).map((p) => (
+            <Segment key={p} selected={project.paper === p} onClick={() => dispatch({ type: 'setPaper', paper: p })}>
+              {PAPER[p].label}
+            </Segment>
+          ))}
+        </div>
+      </Dock>
+
+      <input
+        ref={input}
+        type="file"
+        accept="image/*,.heic,.heif"
+        multiple
+        hidden
+        onChange={(e) => {
+          onFiles([...(e.target.files ?? [])], true)
+          e.target.value = ''
+        }}
       />
+
+      {proof && (
+        <Proof
+          project={project}
+          photos={photos}
+          thumbs={thumbs}
+          lowDpi={lowDpi}
+          emptySlots={emptySlots}
+          onClose={() => setProof(false)}
+          onPrint={(b, c) => dispatch({ type: 'setPrint', bleed: b, cropMarks: c })}
+          onError={(m) => toasts.add({ title: 'No se pudo exportar', description: m, variant: 'error' })}
+          onDone={(name) => toasts.add({ title: 'PDF listo', description: name, variant: 'success' })}
+        />
+      )}
 
       <Dialog.Root open={confirmWipe} onOpenChange={setConfirmWipe}>
         <Dialog size="sm" className="flex flex-col gap-4 p-6">

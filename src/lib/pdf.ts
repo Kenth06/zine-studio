@@ -1,7 +1,7 @@
 import { degrees, PDFDocument, rgb, StandardFonts, type PDFFont, type PDFPage } from 'pdf-lib'
 import { cropRect, rasterSize } from './crop'
 import { FORMATS, PAPER, pt } from './formats'
-import { MINI_LAYOUT, paddedOrder, saddleStitch } from './imposition'
+import { sheetSides } from './imposition'
 import { bleedFor, type Project } from './model'
 import { slotsFor, textSizePt, type Slot } from './templates'
 
@@ -106,41 +106,21 @@ async function buildPages(project: Project, photos: Map<string, Blob>, bleed: nu
   return doc
 }
 
-async function imposeMini(project: Project, pages: PDFDocument) {
+/** Place zine pages on printer sheets, following `sheetSides`. */
+async function impose(project: Project, pages: PDFDocument) {
   const out = await PDFDocument.create()
   const sheet = PAPER[project.paper]
-  const cw = pt(sheet.w / 4)
-  const ch = pt(sheet.h / 2)
   const embedded = await out.embedPdf(await pages.save(), pages.getPageIndices())
-  const page = out.addPage([pt(sheet.w), pt(sheet.h)])
-  for (const cell of MINI_LAYOUT) {
-    const x = cell.col * cw
-    const y = cell.row === 0 ? ch : 0
-    const src = embedded[cell.page - 1]
-    if (cell.rotated) page.drawPage(src, { x: x + cw, y: y + ch, width: cw, height: ch, rotate: degrees(180) })
-    else page.drawPage(src, { x, y, width: cw, height: ch })
-  }
-  return out
-}
-
-async function imposeBooklet(project: Project, pages: PDFDocument) {
-  const out = await PDFDocument.create()
-  const sheet = PAPER[project.paper]
-  const pw = pt(sheet.w / 2)
-  const ph = pt(sheet.h)
-  const embedded = await out.embedPdf(await pages.save(), pages.getPageIndices())
-  const order = paddedOrder(project.pages.length, 4)
-  const at = (n: number) => {
-    const idx = order[n - 1]
-    return idx === null ? null : embedded[idx]
-  }
-  for (const s of saddleStitch(order.length)) {
-    for (const side of [s.front, s.back]) {
-      const page = out.addPage([pt(sheet.w), pt(sheet.h)])
-      const l = at(side.left)
-      const r = at(side.right)
-      if (l) page.drawPage(l, { x: 0, y: 0, width: pw, height: ph })
-      if (r) page.drawPage(r, { x: pw, y: 0, width: pw, height: ph })
+  for (const side of sheetSides(project.format, sheet, project.pages.length)) {
+    const page = out.addPage([pt(sheet.w), pt(sheet.h)])
+    for (const c of side.cells) {
+      if (c.page === null) continue
+      const x = pt(c.x)
+      const y = pt(sheet.h - c.y - c.h)
+      const w = pt(c.w)
+      const h = pt(c.h)
+      if (c.rotated) page.drawPage(embedded[c.page], { x: x + w, y: y + h, width: w, height: h, rotate: degrees(180) })
+      else page.drawPage(embedded[c.page], { x, y, width: w, height: h })
     }
   }
   return out
@@ -150,9 +130,7 @@ export async function buildPdf(project: Project, photos: Map<string, Blob>, mode
   const bleed = mode === 'print' ? bleedFor(project) : 0
   const marks = mode === 'print' && project.format === 'loose' && project.cropMarks
   const pages = await buildPages(project, photos, bleed, marks, progress)
-  let doc = pages
-  if (mode === 'print' && project.format === 'mini') doc = await imposeMini(project, pages)
-  if (mode === 'print' && project.format === 'booklet') doc = await imposeBooklet(project, pages)
+  const doc = mode === 'print' && project.format !== 'loose' ? await impose(project, pages) : pages
   doc.setTitle('Zine')
   doc.setProducer('Zine Studio')
   doc.setCreator('Zine Studio')
