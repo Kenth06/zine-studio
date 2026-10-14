@@ -137,6 +137,13 @@ are the only illustrations.
 - **Gestures on photos:** drag pans, wheel zooms, two fingers pinch. They apply only to the selected slot so the page
   still scrolls everywhere else; extra fingers are ignored mid-gesture.
 - **Direct placement:** a file dropped on a slot goes into that slot; an empty selected slot opens the picker.
+- **Drag and drop** is pointer-based (mouse, pen, touch) and lives in . A press becomes a drag
+  after 6 px; a small preview follows the pointer; the target gets an ink outline; Escape cancels. Dragging an unselected
+  photo onto another slot swaps them; dragging the selected photo reframes it. Every drag has a click or keyboard path.
+- **Page numbers** sit centred under each page as plain numbers (1, 2, 3…), the selected one on a grey pill. The number
+  is the page's drag handle (a grip appears on hover) and opens a tooltip with the page's name.
+- **Icon buttons** hover with a grey background, not just an icon colour. Disabled ones stay visible, dim their icon,
+  lose hover and press, and keep a tooltip saying why (, never ).
 - **Escape** steps out one level: text field, then selected photo.
 - **State is never lost silently:** autosave flushes when the tab hides, destructive actions offer «Deshacer», and
   limits (text that doesn't fit, low resolution, full storage) are shown where they happen.
