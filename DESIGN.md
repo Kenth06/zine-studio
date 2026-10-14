@@ -126,6 +126,21 @@ or default `Button` styling for app chrome: they read as an admin console.
 Diagrams that explain the physical result — the sheet with its folds, the cut, the page order — are drawn at scale and
 are the only illustrations.
 
+## Interaction
+
+- **Frequency decides motion.** Things that happen tens of times a session (selecting, the contextual bar) fade in
+  120 ms or less. Keyboard-triggered changes never animate. Only first-time or rare moments get an entrance.
+- **Press** scales to 0.96 over 150 ms with `ease-out`. **Hover** changes colour only, with `ease`, and only on devices
+  that hover (Tailwind v4's `hover:` already checks this).
+- **Tooltips** come from Kumo `Tooltip` under one `TooltipProvider` (500 ms): the first waits, neighbours open
+  instantly. Every icon-only control has one; never the native `title`.
+- **Gestures on photos:** drag pans, wheel zooms, two fingers pinch. They apply only to the selected slot so the page
+  still scrolls everywhere else; extra fingers are ignored mid-gesture.
+- **Direct placement:** a file dropped on a slot goes into that slot; an empty selected slot opens the picker.
+- **Escape** steps out one level: text field, then selected photo.
+- **State is never lost silently:** autosave flushes when the tab hides, destructive actions offer «Deshacer», and
+  limits (text that doesn't fit, low resolution, full storage) are shown where they happen.
+
 ## Writing
 
 - Spanish first. Sentence case. No exclamation marks.

@@ -17,6 +17,12 @@ Cloudflare Workers Builds is the CI (no GitHub Actions). Build command `pnpm che
 Preview URL is posted on the PR. Work on a branch and open a PR to get a Preview; don't push untested work to `main`.
 The Worker name in `wrangler.jsonc` (`zine-studio`) must match the Worker in the dashboard.
 
+## Commits
+
+Atomic commits in Conventional Commits form: `type(scope): summary` with types `feat`, `fix`, `perf`, `refactor`,
+`docs`, `test`, `build`, `ci`, `chore`. One logical change per commit; the body says why. Run `pnpm check` before each.
+Scopes in use: `editor`, `start`, `proof`, `dock`, `import`, `storage`, `pdf`, `ui`, `motion`, `app`.
+
 ## Hard rules
 
 - **Nothing the user makes leaves the device.** No upload endpoints, no Worker script, no bindings (R2/D1/KV),
@@ -36,7 +42,7 @@ Follow [DESIGN.md](DESIGN.md) — use the `taller-design` skill when touching UI
 the work fills the screen on the cutting mat; chrome floats (corner buttons, bottom dock, contextual bars from
 `src/components/Chrome.tsx`), never panels of cards. Semantic tokens only (`bg-kumo-*`, `text-kumo-*`, `--paper-*`),
 no raw Tailwind colours, no `dark:` variants, one vermilion call-to-action per screen, `<Slug>` for metadata, Phosphor icons, every icon-only button has an `aria-label`,
-every drag interaction has a keyboard alternative. Import Kumo per component (`@cloudflare/kumo/components/button`).
+every drag interaction has a keyboard alternative, every UI change is checked in the browser before it is committed. Import Kumo per component (`@cloudflare/kumo/components/button`).
 UI copy is Spanish.
 
 ## Layout
