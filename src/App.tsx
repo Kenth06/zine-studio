@@ -5,7 +5,7 @@ import { Editor } from './components/Editor'
 import { StartScreen } from './components/StartScreen'
 import type { FormatId, PaperId } from './lib/formats'
 import type { PhotoMeta } from './lib/model'
-import { importPhoto, isPhotoFile } from './lib/photos'
+import { importPhoto, isPhotoFile, StorageFullError } from './lib/photos'
 import { askPersistence, collectPhotos, wipeEverything } from './lib/storage'
 import { useProject, useThumbs } from './state/project'
 
@@ -31,9 +31,18 @@ export default function App() {
           put(meta.id, thumb)
           added.push(meta)
         } catch (err) {
-          toasts.add({ title: 'No se pudo leer una foto', description: err instanceof Error ? err.message : file.name, variant: 'error' })
+          const full = err instanceof StorageFullError
+          toasts.add({
+            title: full ? 'No hay espacio para más fotos' : 'No se pudo añadir una foto',
+            description: err instanceof Error ? err.message : file.name,
+            variant: 'error',
+          })
+          if (full) {
+            setImporting(0)
+            break
+          }
         } finally {
-          setImporting((n) => n - 1)
+          setImporting((n) => Math.max(0, n - 1))
         }
       }
       dispatch({ type: 'addPhotos', photos: added, fill })

@@ -30,6 +30,13 @@ async function heicToJpeg(file: Blob) {
   return Array.isArray(out) ? out[0] : out
 }
 
+/** The browser refused to store more data. Importing more will fail the same way. */
+export class StorageFullError extends Error {
+  constructor() {
+    super('No queda espacio en este navegador. Quita fotos que no uses o empieza un zine nuevo.')
+  }
+}
+
 export interface ImportResult {
   meta: PhotoMeta
   thumb: Blob
@@ -43,8 +50,13 @@ export async function importPhoto(file: File): Promise<ImportResult> {
     blob = await heicToJpeg(file)
     res = await decode(id, blob)
   }
-  if (!res.ok) throw new Error(`No se pudo leer ${file.name}`)
-  await savePhoto(id, blob, res.thumb)
+  if (!res.ok) throw new Error(`${file.name} no es una imagen que este navegador pueda abrir.`)
+  try {
+    await savePhoto(id, blob, res.thumb)
+  } catch (err) {
+    if (err instanceof DOMException && err.name === 'QuotaExceededError') throw new StorageFullError()
+    throw err
+  }
   return { meta: { id, name: file.name, w: res.w, h: res.h }, thumb: res.thumb }
 }
 
