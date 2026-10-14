@@ -13,7 +13,8 @@ export default function App() {
   const { project, dispatch, ready, draft, canUndo, canRedo } = useProject()
   const { urls, put } = useThumbs(project?.photos ?? [])
   const [importing, setImporting] = useState(0)
-  const [started, setStarted] = useState(false)
+  // A saved draft opens straight into the editor; the start screen is only for new zines.
+  const [onStartScreen, setOnStartScreen] = useState(false)
   const toasts = useKumoToastManager()
   const photosRef = useRef<PhotoMeta[]>([])
   useEffect(() => {
@@ -67,19 +68,19 @@ export default function App() {
       </div>
     )
 
-  if (!project || !started)
+  if (!project || onStartScreen)
     return (
       <StartScreen
         draft={project ?? draft}
         onResume={() => {
           if (!project) dispatch({ type: 'load', project: draft })
-          setStarted(true)
+          setOnStartScreen(false)
         }}
         onStart={async (format: FormatId, paper: PaperId, files) => {
           // The previous draft is replaced and has no undo history: free its photos first.
           await collectPhotos(new Set())
           dispatch({ type: 'create', format, paper })
-          setStarted(true)
+          setOnStartScreen(false)
           if (files.length) void addFiles(files, true)
         }}
       />
@@ -94,11 +95,11 @@ export default function App() {
       onFiles={addFiles}
       canUndo={canUndo}
       canRedo={canRedo}
-      onNew={() => setStarted(false)}
+      onNew={() => setOnStartScreen(true)}
       onWipe={async () => {
         await wipeEverything()
         dispatch({ type: 'reset' })
-        setStarted(false)
+        setOnStartScreen(true)
         toasts.add({ title: 'Todo borrado de este navegador' })
       }}
     />

@@ -141,6 +141,7 @@ export function useProject() {
     loadProject()
       .then(async (p) => {
         setDraft(p ?? null)
+        if (p) dispatch({ type: 'load', project: p })
         // Drop photos no saved project refers to (removed earlier, or from a replaced draft).
         await collectPhotos(new Set(p?.photos.map((x) => x.id) ?? []))
       })
