@@ -52,6 +52,20 @@ export function Editor({ project, dispatch, thumbs, importing, canUndo, canRedo,
   const toolsSlot = useRef<HTMLDivElement>(null)
   // Slot that the file picker is choosing for, if it was opened from a slot.
   const pickFor = useRef<{ page: number; slot: number } | null>(null)
+  const strip = useRef<HTMLUListElement>(null)
+
+  // A mouse wheel only scrolls vertically; turn it sideways over the photo strip.
+  useEffect(() => {
+    const el = strip.current
+    if (!el) return
+    const onWheel = (e: WheelEvent) => {
+      if (Math.abs(e.deltaY) <= Math.abs(e.deltaX) || el.scrollWidth <= el.clientWidth) return
+      e.preventDefault()
+      el.scrollLeft += e.deltaY
+    }
+    el.addEventListener('wheel', onWheel, { passive: false })
+    return () => el.removeEventListener('wheel', onWheel)
+  }, [project.photos.length])
 
   const format = FORMATS[project.format]
   const size = format.pageSize(project.paper)
@@ -321,7 +335,7 @@ export function Editor({ project, dispatch, thumbs, importing, canUndo, canRedo,
             Elegir fotos
           </DockButton>
         ) : (
-          <ul className="no-scrollbar flex max-w-[min(70vw,640px)] gap-1.5 overflow-x-auto p-1" aria-label="Fotos del zine">
+          <ul ref={strip} className="no-scrollbar flex max-w-[min(70vw,640px)] gap-1.5 overflow-x-auto p-1" aria-label="Fotos del zine">
             {project.photos.map((photo) => {
               const dpi = worstDpi.get(photo.id)
               const level = dpi === undefined ? null : dpiLevel(dpi)
