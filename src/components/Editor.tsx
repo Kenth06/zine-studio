@@ -418,6 +418,11 @@ export function Editor({ project, dispatch, thumbs, importing, canUndo, canRedo,
             requestAnimationFrame(() => exportButton.current?.focus())
           }}
           onPaper={(paper) => dispatch({ type: 'setPaper', paper })}
+          onFormat={(next) => {
+            const fixed = FORMATS[next].fixedPages
+            dispatch({ type: 'setFormat', format: next })
+            if (fixed && total > fixed) undoable(`Se quitaron ${total - fixed} páginas: un mini-zine tiene ${fixed}`)
+          }}
           onPrint={(b, c) => dispatch({ type: 'setPrint', bleed: b, cropMarks: c })}
           onError={(m) => toasts.add({ title: 'No se pudo exportar', description: m, variant: 'error' })}
           onDone={(name) => toasts.add({ title: 'PDF listo', description: name, variant: 'success' })}

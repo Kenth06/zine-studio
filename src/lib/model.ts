@@ -67,6 +67,23 @@ export function autoFill(p: Project, photoIds: string[]): Project {
   return { ...p, pages }
 }
 
+/**
+ * Switch format, keeping the work. A mini-zine has exactly 8 pages: extra
+ * interior pages are dropped (cover and back cover stay) and missing ones are
+ * added as blanks before the back cover.
+ */
+export function withFormat(p: Project, format: Project['format']): Project {
+  if (p.format === format) return p
+  let pages = p.pages
+  const fixed = FORMATS[format].fixedPages
+  if (fixed && pages.length > fixed) pages = [...pages.slice(0, fixed - 1), pages[pages.length - 1]]
+  if (fixed && pages.length < fixed) {
+    const blanks = Array.from({ length: fixed - pages.length }, () => newPage('one'))
+    pages = pages.length ? [...pages.slice(0, -1), ...blanks, pages[pages.length - 1]] : blanks
+  }
+  return { ...p, format, pages }
+}
+
 export function withTemplate(page: Page, template: TemplateId): Page {
   const n = photoCount(template)
   const kept = page.fills.filter(Boolean)

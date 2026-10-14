@@ -1,7 +1,7 @@
 import { DownloadSimpleIcon, XIcon } from '@phosphor-icons/react'
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { FORMATS, PAPER, type PaperId } from '../lib/formats'
+import { FORMATS, PAPER, type FormatId, type PaperId } from '../lib/formats'
 import { padToMultiple, sheetSides, type PrintSide } from '../lib/imposition'
 import type { PhotoMeta, Project } from '../lib/model'
 import type { ExportMode } from '../lib/pdf'
@@ -21,6 +21,7 @@ interface Props {
   emptyTexts: number
   onClose: () => void
   onPaper: (paper: PaperId) => void
+  onFormat: (format: FormatId) => void
   onPrint: (bleed: number | undefined, cropMarks: boolean | undefined) => void
   onDone: (filename: string) => void
   onError: (message: string) => void
@@ -175,6 +176,20 @@ export function Proof(p: Props) {
           </ol>
 
           <div className="flex flex-col gap-3 border-t border-kumo-hairline pt-4">
+            <div className="flex flex-col gap-1.5">
+              <Slug>Formato</Slug>
+              <SegmentGroup
+                label="Formato"
+                value={project.format}
+                onChange={p.onFormat}
+                itemClassName="h-7 px-2.5"
+                options={[
+                  { value: 'mini' as FormatId, label: 'Mini-zine' },
+                  { value: 'booklet' as FormatId, label: 'Cuadernillo' },
+                  { value: 'loose' as FormatId, label: 'Sueltas' },
+                ]}
+              />
+            </div>
             <div className="flex flex-col gap-1.5">
               <Slug>Papel</Slug>
               <SegmentGroup

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
 import type { PhotoFill } from '../lib/crop'
 import type { FormatId, PaperId } from '../lib/formats'
-import { autoFill, blankFill, createProject, newPage, withTemplate, type PhotoMeta, type Project } from '../lib/model'
+import { autoFill, blankFill, createProject, newPage, withFormat, withTemplate, type PhotoMeta, type Project } from '../lib/model'
 import { collectPhotos, loadProject, loadThumb, saveProject } from '../lib/storage'
 import type { TemplateId } from '../lib/templates'
 
@@ -20,6 +20,7 @@ export type Action =
   | { type: 'addPage'; after: number; count?: number }
   | { type: 'removePage'; page: number }
   | { type: 'setPaper'; paper: PaperId }
+  | { type: 'setFormat'; format: FormatId }
   | { type: 'setPrint'; bleed?: number; cropMarks?: boolean }
   | { type: 'reset' }
   | { type: 'undo' }
@@ -78,6 +79,8 @@ function reduce(p: Project | null, a: Action): Project | null {
       return { ...p, pages: p.pages.filter((_, i) => i !== a.page) }
     case 'setPaper':
       return { ...p, paper: a.paper }
+    case 'setFormat':
+      return withFormat(p, a.format)
     case 'setPrint':
       return { ...p, bleed: a.bleed ?? p.bleed, cropMarks: a.cropMarks ?? p.cropMarks }
     case 'undo':
